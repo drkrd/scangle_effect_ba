@@ -47,6 +47,8 @@ myProfilesLAD = function(Z, Zmax, dZ)
   return(list_lad)
 }
 
+
+## All following functions compute the values from a dataframe of the las data containing Z and return number only
 func_meanch <- function(z,rn)
 {
   aoi <- as.data.frame(cbind(z, rn))
