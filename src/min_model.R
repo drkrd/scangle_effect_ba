@@ -40,6 +40,7 @@ for(name in names(aois))
 
 names(mets_dbs_min) <- c("id_placette", "mean_angle", "meanch", "varch", "pf", "cvlad")
 mets_dbs_min$id_placette <- as.factor(mets_dbs_min$id_placette)
+mets_dbs_max$mean_angle <- as.numeric(mets_dbs_max$mean_angle)
 mets_dbs_min$meanch <- as.numeric(mets_dbs_min$meanch)
 mets_dbs_min$varch <- as.numeric(mets_dbs_min$varch)
 mets_dbs_min$pf <- as.numeric(mets_dbs_min$pf)
