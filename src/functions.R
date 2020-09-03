@@ -47,7 +47,6 @@ myProfilesLAD = function(Z, Zmax, dZ)
   return(list_lad)
 }
 
-
 ## All following functions compute the values from a dataframe of the las data containing Z and return number only
 func_meanch <- function(z,rn)
 {
@@ -109,8 +108,6 @@ func_cvlad <- function(z,rn)
     return(sd(val) / mean(val))
   }
 }
-
-
 
 area_calc = function(dfr)
 {
