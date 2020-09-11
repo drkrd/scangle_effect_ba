@@ -1,9 +1,13 @@
-#variation <- numeric(100)
+
 library(lidR)
 library(dplyr)
+library(tidyverse)
+library(caret)
+
 sd_lst <- list(1000)
 r2_lst <- list(1000)
 high_lst <- list(1000)
+df_all <- data.frame()
 for(loop in 1:1000)
 {
 
@@ -60,27 +64,37 @@ for(loop in 1:1000)
   
   
   mets_dbs_rand <- right_join(fd_ba_smry, mets_dbs_rand, by="id_placette")
-  
-  # fd_ba_smry1 <- fd_ba_smry1 %>% 
-  #   mutate(Classes=if_else(mean_angle<5,1,
-  #                          if_else(mean_angle<10,2,
-  #                                  if_else(mean_angle<15,3,
-  #                                          if_else(mean_angle<20,4,
-  #                                                  if_else(mean_angle<25,5,
-  #                                                          if_else(mean_angle<30,6,
-  #                                                                  if_else(mean_angle<35,7,
-  #                                                                          if_else(mean_angle<40,8,9)))))))))
-  
-  
-  # vars <- length(unique(fd_ba_smry1$Classes))
-  
-  
+
   sd_meangle <- sd(mets_dbs_rand$mean_angle)
-  model_randang <- lm(data = mets_dbs_rand[-c(21,22),], 
+  
+  model_randang_loocv <- train(log(sum_ba_hec)~log(meanch)+log(varch)+log(pf)+log(cvlad),
+                         data = mets_dbs_rand,
+                         method = "lm",
+                         trControl = trainControl(method="LOOCV"))
+  
+  
+  model_randang <- lm(data = mets_dbs_rand, 
                       formula = log(sum_ba_hec)~log(meanch)+log(varch)+log(pf)+log(cvlad))
   
+
+
   r2 <- summary(model_randang)$adj.r.squared
-  high_lst[[toString(r2)]] <- mets_dbs_rand$mean_angle
+  rmser <- rmse(log(mets_dbs_rand$sum_ba_hec), predict(model_randang))
+  maer <- mean(abs(log(mets_dbs_rand$sum_ba_hec)-predict(model_randang)))
+  r2cv <- model_randang_loocv$results$Rsquared
+  rmsercv <- model_randang_loocv$results$RMSE
+  maercv <- model_randang_loocv$results$MAE
+  
+  
+  
+  df_all <- rbind(df_all, c(r2, exp(rmser), exp(maer), r2cv, 
+                            exp(rmsercv), exp(maercv), mets_dbs_rand$mean_angle))
+  
+  #ang_lst[[toString(r2)]] <- mets_dbs_rand$mean_angle
+  
+  
+  
+  
 
   #print(r2)
   #variation[i] <- vars
@@ -88,3 +102,8 @@ for(loop in 1:1000)
   r2_lst[[loop]] <- r2
   print(loop)
 }
+
+colnames(df_all11) <- c("r2", "rmser", "maer", "r2cv", "rmsercv", "maercv",
+                      1,  2,  3,  4,  5,  6,  7,  8,  9, 9.2,
+                      10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 
+                      20, 21, 22, 23, 24, 25, 26, 27, 28, 29)
