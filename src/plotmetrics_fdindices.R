@@ -35,7 +35,7 @@ fd <- readxl::read_xlsx("D:/1_Work/Dropbox/3_R_codes/Projects/scangle_effect_ba/
 ind_df <- data.frame()
 for(idp in unique(fd$id_placette))
 {
-  xx1 <- fd[which(fd$id_placette==idp), c(4,5,10,12)]
+  xx1 <- fd[which(fd$id_placette==idp), c(4,5,10,12,13)]
   xx1 <- xx1[which(xx1$dbh_in_cm!=0),]
   
   
@@ -74,7 +74,10 @@ for(idp in unique(fd$id_placette))
                                           length(lst$n), 
                                           sm, 
                                           pilou,
-                                          gini(xx1$dbh_in_cm))))
+                                          gini(xx1$dbh_in_cm),
+                                          mean(xx1$dbh_in_cm),
+                                          max(xx1$`hauteur totale_in_m`, na.rm = TRUE),
+                                          mean(xx1$`hauteur totale_in_m`, na.rm = TRUE))))
 }
 colnames(ind_df) <- c("id_placette",
                       "Mingling",
@@ -82,7 +85,10 @@ colnames(ind_df) <- c("id_placette",
                       "NoSpecies",
                       "Shannon",
                       "Pilou",
-                      "GiniDBH")
+                      "GiniDBH",
+                      "MeanDBH",
+                      "Maxh",
+                      "Meanh")
 
 
 

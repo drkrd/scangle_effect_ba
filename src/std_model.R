@@ -12,13 +12,13 @@ for(name in names(aois))
                                               aoi_pf,
                                               aoi_cvlad)))
 }
-names(mets_dbs) <- c("id_placette", "meanch", "varch", "pf", "cvlad")
+names(mets_dbs) <- c("id_placette", "meanch1", "varch1", "pf1", "cvlad1")
 mets_dbs$id_placette <- as.factor(mets_dbs$id_placette)
 mets_dbs$meanch <- as.numeric(mets_dbs$meanch)
 mets_dbs$varch <- as.numeric(mets_dbs$varch)
 mets_dbs$pf <- as.numeric(mets_dbs$pf)
 mets_dbs$cvlad <- as.numeric(mets_dbs$cvlad)
-mets_dbs <- right_join(fd_ba_smry, mets_dbs, by="id_placette")
+final_df <- right_join(final_df, mets_dbs, by="id_placette")
 
 model <- lm(data = mets_dbs[-c(21,22),], 
             formula = log(sum_ba_hec)~log(meanch)+log(varch)+log(pf)+log(cvlad))
