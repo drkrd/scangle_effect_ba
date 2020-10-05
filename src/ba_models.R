@@ -3,6 +3,7 @@ library(lidR)
 library(dplyr)
 library(tidyverse)
 library(caret)
+library(ModelMetrics)
 
 list_mets <- list()
 list_models <- list()
@@ -10,13 +11,13 @@ list_modelscv <- list()
 df_all_one <- data.frame()
 df_meangle1 <- data.frame()
 df_meangle2 <- data.frame()
+df_meangle3 <- data.frame()
 for(loop in 1:1000)
 {
 
-  combinations <- 1
+  combinations <- 3
   mets_dbs_rand <- data.frame()
   min_count=0
-  
   
   for(name in names(aois))
   {
@@ -40,8 +41,11 @@ for(loop in 1:1000)
     if(l>combinations) 
     {
       x <- sample((1:l), combinations)
-      flid1 <- meangle_fl[,2][x][1]
-      flid2 <- meangle_fl[,2][x][2]
+      #flid1 <- meangle_fl[,2][x][1]
+      #flid2 <- meangle_fl[,2][x][2]
+      flids <- meangle_fl[,2][x][1:length(x)]
+      #aoi_tmp <- filter_poi(aoi, flightlineID == flid1 | flightlineID == flid2)
+      aoi_tmp <- filter_poi(aoi, flightlineID %in% flids)
     }
    
     else
@@ -64,6 +68,7 @@ for(loop in 1:1000)
     mets_dbs_rand <- as.data.frame(rbind(mets_dbs_rand, c(name,
                                                           meangle_fl[,1][x][1],
                                                           meangle_fl[,1][x][2],
+                                                          meangle_fl[,1][x][3],
                                                           aoi_meanch,
                                                           aoi_varch,
                                                           aoi_pf,
@@ -74,10 +79,11 @@ for(loop in 1:1000)
   }
   
   
-  names(mets_dbs_rand) <- c("id_placette", "mean_angle1", "mean_angle2", "meanch", "varch", "pf", "cvlad")
+  names(mets_dbs_rand) <- c("id_placette", "mean_angle1", "mean_angle2", "mean_angle3", "meanch", "varch", "pf", "cvlad")
   mets_dbs_rand$id_placette <- as.factor(mets_dbs_rand$id_placette)
   mets_dbs_rand$mean_angle1 <- as.numeric(mets_dbs_rand$mean_angle1)
   mets_dbs_rand$mean_angle2 <- as.numeric(mets_dbs_rand$mean_angle2)
+  mets_dbs_rand$mean_angle2 <- as.numeric(mets_dbs_rand$mean_angle3)
   mets_dbs_rand$meanch <- as.numeric(mets_dbs_rand$meanch)
   mets_dbs_rand$varch <- as.numeric(mets_dbs_rand$varch)
   mets_dbs_rand$pf <- as.numeric(mets_dbs_rand$pf)
@@ -111,11 +117,11 @@ for(loop in 1:1000)
   
   
   df_all_one <- as.data.frame(rbind(df_all_one, c(r2, exp(rmser), exp(maer), r2cv, 
-                                              exp(rmsercv), exp(maercv),
-                                              abs(mets_dbs_rand$mean_angle1-mets_dbs_rand$mean_angle2))))
+                                              exp(rmsercv), exp(maercv))))
   length(df_all_one)
   df_meangle1 <- as.data.frame(rbind(df_meangle1, mets_dbs_rand$mean_angle1))
   df_meangle2 <- as.data.frame(rbind(df_meangle2, mets_dbs_rand$mean_angle2))
+  df_meangle3 <- as.data.frame(rbind(df_meangle3, mets_dbs_rand$mean_angle3))
   list_mets[[loop]] <- as.list(mets_dbs_rand[,c(1,8:11)])
   list_models[[loop]] <- model_randang
   list_modelscv[[loop]] <- model_randang
