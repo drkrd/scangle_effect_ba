@@ -50,9 +50,9 @@ for(loop in 1:1000)
    
     else
     {
-      x <- sample((1:l), l)
-      flid1 <- meangle_fl[,2][x][1]
-      flid2 <- 0
+      flids <- meangle_fl[,2]
+      aoi_tmp <- filter_poi(aoi, flightlineID %in% flids)
+      
     }
  
     
