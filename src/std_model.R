@@ -19,7 +19,15 @@ mets_dbs$meanch <- as.numeric(mets_dbs$meanch)
 mets_dbs$varch <- as.numeric(mets_dbs$varch)
 mets_dbs$pf <- as.numeric(mets_dbs$pf)
 mets_dbs$cvlad <- as.numeric(mets_dbs$cvlad)
-all_angs_df <- right_join(placette.mes[,c(1,48,49,50)], mets_dbs, by=c("Id_plac"="id_placette"))
 
-mdl_allangs <- lm(data = all_angs_df[which(all_angs_df$pf>0),], 
+mets_allang_co73 <- right_join(df_co73[,c(1,48)], 
+                              mets_dbs, 
+                              by=c("Id_plac"="id_placette"))
+
+
+mets_allang_co73 <- mets_allang_co73[complete.cases(mets_allang_co73),]
+
+mdl_allang_co73 <- lm(data = mets_allang_co73, 
             formula = log(G175)~log(meanch)+log(varch)+log(pf)+log(cvlad))
+
+summary(mdl_allang_co73)

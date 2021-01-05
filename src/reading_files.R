@@ -37,5 +37,36 @@ for(i in 1:30)
   aois[[toString(fd_ba_smry$id_placette[i])]] <- clip_circle(lasc, 
                                                              xcenter = fd_ba_smry$cx[i], 
                                                              ycenter = fd_ba_smry$cy[i], 
-                                                             radius = 15 )
+                                                             radius = 17.5 )
+}
+
+
+
+
+ar_th <- 0.9*pi*17.5*17.5
+aois_n <- list()
+for(name in names(aois))
+{
+  aoi <- readLAS(paste0("D:/1_Work/2_Ciron/Data/ULM/LAS/unnorm/plots/17_5m_rad/", 
+                 name,
+                 ".las"))
+  aoi <- lasflightline(aoi)
+  flist <- unique(aoi@data$flightlineID)
+  meangle_fl <- data.frame()
+  
+  
+  for(fl in flist)
+  {
+    aoi_subset <- lasfilter(aoi, flightlineID == fl)
+    ar <- area_calc(data.frame(x=aoi_subset@data$X, y=aoi_subset@data$Y))
+    meangle <- abs(mean(aoi_subset@data$ScanAngleRank))
+    meangle_fl <- rbind(meangle_fl,c(meangle, fl, ar))
+  }
+  meangle_fl <- meangle_fl[meangle_fl[,3]>ar_th,]
+  aoi <- lasfilter(aoi, flightlineID %in% meangle_fl[,2])
+  writeLAS(aoi, paste0("D:/1_Work/2_Ciron/Data/ULM/LAS/unnorm/plots/17_5m_rad/", 
+                       name,
+                       "_n",
+                       ".las"))
+  aois_n[[name]] <- aoi 
 }

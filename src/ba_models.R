@@ -5,143 +5,139 @@ library(tidyverse)
 library(caret)
 library(ModelMetrics)
 
-list_mets <- list()
-list_models <- list()
-list_modelscv <- list()
-df_all_one <- data.frame()
-df_meangle1 <- data.frame()
-df_meangle2 <- data.frame()
-df_meangle3 <- data.frame()
-for(loop in 1:1000)
+list_mets_mi <- list()
+list_models_mi <- list()
+list_modelscv_mi <- list()
+df_all_one_mi <- data.frame()
+
+ar_th <- 0.9*pi*17.5*17.5
+#df_meangle <- data.frame()
+aois_mi <- aois[which(names(aois) %in% df_mi$Id_plac)]
+for(loop in 1:300)
 {
 
-  combinations <- 3
-  mets_dbs_rand <- data.frame()
-  min_count=0
+  ncombs <- 1
+  df_randangs <- data.frame()
+  min_miunt=0
   
-  for(name in names(aois))
+  for(name in names(aois_mi))
   {
-    aoi <- lasflightline(aois[[name]])
+
+    aoi <- aois[[name]]
     flist <- unique(aoi@data$flightlineID)
-    meangle_fl <- data.frame()
+    df_fl_ang <- data.frame()
     
     
     for(fl in flist)
     {
       aoi_subset <- lasfilter(aoi, flightlineID == fl)
-      ar <- area_calc(data.frame(x=aoi_subset@data$X, y=aoi_subset@data$Y))
+      ar <- lidR::area(aoi_subset)
       meangle <- abs(mean(aoi_subset@data$ScanAngleRank))
-      meangle_fl <- rbind(meangle_fl,c(meangle, fl, ar))
+      df_fl_ang <- rbind(df_fl_ang,c(meangle, fl, ar))
     }
     
     
-    meangle_fl <- meangle_fl[meangle_fl[,3]>650,]
+    df_fl_ang <- df_fl_ang[which(df_fl_ang[,3]>ar_th),]
     
-    l <- length(meangle_fl[,1])
-    if(l>combinations) 
+    #get the number of flight lines that cover the area entirely 
+    l <- length(df_fl_ang[,1])
+    #if three flight lines are available, it is possible to make 3c1 (one fl),>> 
+    #3c2 (two fl) or 3c3 (three fl) etc. configs. 
+    
+    #there may be some plots where only one fline exists but the experiment may be>>
+    #to test various combinations of flines. In such cases, the available fline data is used>>
+    #along with the combinations of flines on other plots.
+    
+    #also, it is necessary to specify this because there will be an error for nCr, where n<r
+    
+    #if condition is for n>r where there will be multiple possible combinations
+    if(l>ncombs) {
+      #generate a combination of numbers from a list (1:l) of numbers
+      #these combination of numbers are basically the index values using which we will randomly>>
+      #pick flines from the df_fl_ang in each iteration
+      x <- sample((1:l), ncombs) 
+      flids <- df_fl_ang[,2][x]
+      aoi_tmp <- filter_poi(aoi, flightlineID %in% flids)
+    }else 
     {
-      x <- sample((1:l), combinations)
-      #flid1 <- meangle_fl[,2][x][1]
-      #flid2 <- meangle_fl[,2][x][2]
-      flids <- meangle_fl[,2][x][1:length(x)]
-      #aoi_tmp <- filter_poi(aoi, flightlineID == flid1 | flightlineID == flid2)
+      #else condition is for n<r or n==r where only one possible combinations exists.
+      #we will pick all the available flight lines
+      x <- sample((1:l), ncombs)
+      flids <- df_fl_ang[,2]
       aoi_tmp <- filter_poi(aoi, flightlineID %in% flids)
     }
-   
-    else
-    {
-      flids <- meangle_fl[,2]
-      aoi_tmp <- filter_poi(aoi, flightlineID %in% flids)
-      
-    }
- 
     
-    aoi_tmp <- filter_poi(aoi, flightlineID == flid1 | flightlineID == flid2)
+    
+    z <- aoi_tmp@data$Z
+    rn <- aoi_tmp@data$ReturnNumber
+    
+    mch <- func_meanch(z, rn)
+    vch <- func_varch(z, rn)
+    pf <- 1-func_pf(z, rn)
+    cvl <- func_cvlad(z, rn)
 
-    
-    aoi_meanch <- func_meanch(aoi_tmp@data$Z, aoi_tmp@data$ReturnNumber)
-    aoi_varch <- func_varch(aoi_tmp@data$Z, aoi_tmp@data$ReturnNumber)
-    aoi_pf <- func_pf(aoi_tmp@data$Z, aoi_tmp@data$ReturnNumber)
-    aoi_cvlad <- func_cvlad(aoi_tmp@data$Z, aoi_tmp@data$ReturnNumber)
-    
-  
-    mets_dbs_rand <- as.data.frame(rbind(mets_dbs_rand, c(name,
-                                                          meangle_fl[,1][x][1],
-                                                          meangle_fl[,1][x][2],
-                                                          meangle_fl[,1][x][3],
-                                                          aoi_meanch,
-                                                          aoi_varch,
-                                                          aoi_pf,
-                                                          aoi_cvlad)))
-    
-  
-
+    df_randangs <- as.data.frame(rbind(df_randangs, c(name,
+                                                      df_fl_ang[,1][x],
+                                                      mch,
+                                                      vch,
+                                                      pf,
+                                                      cvl)))
   }
-  
-  
-  names(mets_dbs_rand) <- c("id_placette", "mean_angle1", "mean_angle2", "mean_angle3", "meanch", "varch", "pf", "cvlad")
-  mets_dbs_rand$id_placette <- as.factor(mets_dbs_rand$id_placette)
-  mets_dbs_rand$mean_angle1 <- as.numeric(mets_dbs_rand$mean_angle1)
-  mets_dbs_rand$mean_angle2 <- as.numeric(mets_dbs_rand$mean_angle2)
-  mets_dbs_rand$mean_angle2 <- as.numeric(mets_dbs_rand$mean_angle3)
-  mets_dbs_rand$meanch <- as.numeric(mets_dbs_rand$meanch)
-  mets_dbs_rand$varch <- as.numeric(mets_dbs_rand$varch)
-  mets_dbs_rand$pf <- as.numeric(mets_dbs_rand$pf)
-  mets_dbs_rand$cvlad <- as.numeric(mets_dbs_rand$cvlad)
-  
-  
-  
-  mets_dbs_rand <- right_join(fd_ba_smry, mets_dbs_rand, by="id_placette")
 
-  #sd_meangle <- sd(mets_dbs_rand$mean_angle)
   
-  model_randang_loocv <- train(log(sum_ba_hec)~log(meanch)+log(varch)+log(pf)+log(cvlad),
-                         data = mets_dbs_rand,
+  names(df_randangs) <- c("id_placette", "mean_angle", "meanch", "varch", "pf", "cvlad")
+  df_randangs$id_placette <- as.factor(df_randangs$id_placette)
+  df_randangs$mean_angle <- as.numeric(df_randangs$mean_angle)
+  df_randangs$meanch <- as.numeric(df_randangs$meanch)
+  df_randangs$varch <- as.numeric(df_randangs$varch)
+  df_randangs$pf <- as.numeric(df_randangs$pf)
+  df_randangs$cvlad <- as.numeric(df_randangs$cvlad)
+  
+  
+  
+  mets_randangs_mi <- right_join(df_mi[,c(1,48)], 
+                            df_randangs, 
+                            by=c("Id_plac"="id_placette"))
+  #mets_randangs_mi <- mets_randangs_mi[complete.cases(mets_randangs_mi),]
+  
+  #df_randangs <- df_randangs[-which(df_randangs$pf==0),]
+
+  #sd_meangle <- sd(df_randangs$mean_angle)
+  
+  mdl_randangs_loocv_mi <- train(log(G175)~log(meanch)+log(varch)+log(pf)+log(cvlad),
+                         data = mets_randangs_mi,
                          method = "lm",
                          trControl = trainControl(method="LOOCV"))
   
   
-  model_randang <- lm(data = mets_dbs_rand, 
-                      formula = log(sum_ba_hec)~log(meanch)+log(varch)+log(pf)+log(cvlad))
+  mdl_randangs_mi <- lm(data = mets_randangs_mi, 
+                      formula = log(G175)~log(meanch)+log(varch)+log(pf)+log(cvlad))
   
 
 
-  r2 <- summary(model_randang)$adj.r.squared
-  rmser <- rmse(log(mets_dbs_rand$sum_ba_hec), predict(model_randang))
-  maer <- mean(abs(log(mets_dbs_rand$sum_ba_hec)-predict(model_randang)))
-  r2cv <- model_randang_loocv$results$Rsquared
-  rmsercv <- model_randang_loocv$results$RMSE
-  maercv <- model_randang_loocv$results$MAE
+  r2 <- summary(mdl_randangs_mi)$adj.r.squared
+  rmser <- rmse(log(mets_randangs_mi[, 2]), predict(mdl_randangs_mi))
+  maer <- mean(abs(log(mets_randangs_mi[, 2])-predict(mdl_randangs_mi)))
+  r2cv <- mdl_randangs_loocv_mi$results$Rsquared
+  rmsercv <- mdl_randangs_loocv_mi$results$RMSE
+  maercv <- mdl_randangs_loocv_mi$results$MAE
   
 
   
   
-  df_all_one <- as.data.frame(rbind(df_all_one, c(r2, exp(rmser), exp(maer), r2cv, 
-                                              exp(rmsercv), exp(maercv))))
-  length(df_all_one)
-  df_meangle1 <- as.data.frame(rbind(df_meangle1, mets_dbs_rand$mean_angle1))
-  df_meangle2 <- as.data.frame(rbind(df_meangle2, mets_dbs_rand$mean_angle2))
-  df_meangle3 <- as.data.frame(rbind(df_meangle3, mets_dbs_rand$mean_angle3))
-  list_mets[[loop]] <- as.list(mets_dbs_rand[,c(1,8:11)])
-  list_models[[loop]] <- model_randang
-  list_modelscv[[loop]] <- model_randang
-  
+  df_all_one_mi <- as.data.frame(rbind(df_all_one_mi, c(r2, exp(rmser), exp(maer), r2cv, 
+                                              exp(rmsercv), exp(maercv), 
+                                              c(mets_randangs_mi$mean_angle))))
+  #length(df_all_one_mi)
+  #df_meangle <- as.data.frame(rbind(df_meangle1, df_randangs$mean_angle1))
 
-  length(df_meangle1)
-  
+  list_mets_mi[[loop]] <- list(mets_randangs_mi[,c(1:7)])
+  list_models_mi[[loop]] <- mdl_randangs_mi
+  list_modelscv_mi[[loop]] <- mdl_randangs_loocv_mi
   
   print(loop)
 }
 
-colnames(df_all_one) <- c("r2", "rmser", "maer", "r2cv", "rmsercv", "maercv",
-                        "d1",  "d2",  "d3",  "d4",  "d5",  "d6",  "d7",  "d8",  "d9", "d9.2",
-                        "d10", "d11", "d12", "13", "d14", "d15", "d16", "d17", "d18", "d19", 
-                        "d20", "d21", "d22", "d23", "d24", "d25", "d26", "d27", "d28", "d29")
 
-colnames(df_meangle1) <- c(1,  2,  3,  4,  5,  6,  7,  8,  9, 9.2,
-                        10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 
-                        20, 21, 22, 23, 24, 25, 26, 27, 28, 29)
+colnames(df_all_one_mi) <- c("r2", "rmser", "maer", "r2cv", "rmsercv", "maercv", names(aois_mi))
 
-colnames(df_meangle2) <- c(1,  2,  3,  4,  5,  6,  7,  8,  9, 9.2,
-                           10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 
-                           20, 21, 22, 23, 24, 25, 26, 27, 28, 29)
