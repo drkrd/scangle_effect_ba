@@ -1,55 +1,67 @@
 library(lidR)
 library(tidyr)
 library(dplyr)
-
-fd <- readxl::read_xlsx("D:/1_Work/Dropbox/3_R_codes/Projects/scangle_effect_ba/data/Mesures_placette_Frisbee_all_plots_womort.xlsx",
-                        sheet = "Arbres")
+library(data.table)
 
 
 
-fd <- as.data.frame(fd)
+fd <- readxl::read_xlsx("D:/1_Work/Dropbox/3_R_codes/Projects/scangle_effect_ba/data/Mesures_placette_Frisbee_all_plots_sansmort.xlsx",
+                        sheet = "Arbres")# The original file does not include dead trees. They were deleted before-hand
 
-fd_ba <- fd[,c(1,2,3,10,11,18,19)]
-
-fd_ba_smry <- fd_ba %>%
-  #mutate(Mort=replace(Mort, Mort=="X", "x")) %>% #standardise dead tree entries
-  #filter(is.na(Mort)) %>% #remove dead trees
-  mutate(dbh_cm = (cbh_in_cm/pi)) %>% #circumference to diameter: c = 2piR = piD
-  mutate(ba_sqm = pi*((dbh_cm/200)^2)) %>% #ba in sqm
-  mutate(id_placette=as.factor(id_placette)) %>% 
-  dplyr::select(c(1,2,3,7,8,9)) %>% 
-  group_by(id_placette, cx, cy) %>% 
-  summarise(sum_ba=sum(ba_sqm, na.rm = TRUE)) %>% #sum of basal area per plot
-  mutate(sum_ba_hec=(10000*sum_ba)/706.8583) %>% #extrapolated to 1 hectare
-  ungroup()
+# fd <- as.data.frame(fd)
+# fd_ba_smry <- fd %>%
+#   #mutate(Mort=replace(Mort, Mort=="X", "x")) %>% #standardise dead tree entries
+#   #filter(is.na(Mort)) %>% #remove dead trees
+#   mutate(ba_sqm = pi*(cbh_in_cm/(pi*200))^2) %>% #ba in sqm; D = C/(pi*100) =>  A = pi*(D/2)² => a=pi*(C/(pi*200))²
+#   mutate(id_placette=as.factor(id_placette)) %>% 
+#   dplyr::select(c(id_placette, cx, cy, ba_sqm)) %>% 
+#   group_by(id_placette, cx, cy) %>% 
+#   summarise(sum_ba=sum(ba_sqm, na.rm = TRUE)) %>% #sum of basal area per plot
+#   mutate(sum_ba_hec=(10000*sum_ba)/706.8583) %>% #extrapolated to 1 hectare
+#   ungroup()
 
 
-plot_loc <- fd_ba_smry[,c(1:3)]
+##data.table implementation
+setDT(fd)
+fd_ba_smry <- fd[,ba_sqm := pi*(cbh_in_cm/(pi*200))^2,][
+  ,id_placette:=as.factor(id_placette),][
+    ,.(id_placette, cx, cy, ba_sqm),][
+      ,.(sum_ba=sum(ba_sqm, na.rm = TRUE)), keyby = .(id_placette, cx, cy)][
+        ,sum_ba_hec:=(10000*sum_ba)/706.8583,]
+
+
+
+
+
+plot_loc <- fd_ba_smry[,.(id_placette,cx,cy),]
 
 
 ##read las data into a catalog
-lasc <- readLAScatalog("D:/1_Work/2_Ciron/Data/ULM/LAS/norm/")
+lasc <- readLAScatalog("D:/1_Work/2_Ciron/Data/ULM/LAS/unnorm/plots/17_5m_rad/")
 
 ##clipping plots based on plot centre coordinates
-aois <- list()
+aois_un <- list()
 for(i in 1:30)
 {
-  aois[[toString(fd_ba_smry$id_placette[i])]] <- clip_circle(lasc, 
-                                                             xcenter = fd_ba_smry$cx[i], 
-                                                             ycenter = fd_ba_smry$cy[i], 
-                                                             radius = 17.5 )
+  ls<- clip_circle(lasc, 
+                   xcenter = fd_ba_smry$cx[i], 
+                   ycenter = fd_ba_smry$cy[i], 
+                   radius = 15)
+   aois_un[[toString(fd_ba_smry$id_placette[i])]] <- ls  
+   writeLAS(ls,paste0("D:/1_Work/2_Ciron/Data/ULM/LAS/unnorm/plots/15m_rad_test/", toString(fd_ba_smry$id_placette[i]), ".las"))
 }
 
 
 
 
-ar_th <- 0.9*pi*17.5*17.5
-aois_n <- list()
-for(name in names(aois))
+ar_th <- 0.9*pi*15*15
+pf74_mi_fls <- list()
+for(name in names(pc74_mi))
 {
-  aoi <- readLAS(paste0("D:/1_Work/2_Ciron/Data/ULM/LAS/unnorm/plots/17_5m_rad/", 
-                 name,
-                 ".las"))
+  # aoi <- readLAS(paste0("D:/1_Work/2_Ciron/Data/ULM/LAS/unnorm/plots/15m_rad_test/", 
+  #                name,
+  #                ".las"))
+  aoi <- pc74_mi[[name]]
   aoi <- lasflightline(aoi)
   flist <- unique(aoi@data$flightlineID)
   meangle_fl <- data.frame()
@@ -59,14 +71,30 @@ for(name in names(aois))
   {
     aoi_subset <- lasfilter(aoi, flightlineID == fl)
     ar <- area_calc(data.frame(x=aoi_subset@data$X, y=aoi_subset@data$Y))
-    meangle <- abs(mean(aoi_subset@data$ScanAngleRank))
-    meangle_fl <- rbind(meangle_fl,c(meangle, fl, ar))
+    meangle <- round(abs(mean(aoi_subset@data$ScanAngleRank)),2)
+    if(ar>ar_th)
+    {
+      nm <- paste0("D:/1_Work/5_Bauges/Data/ULM/LAS/unnorm/plots/mixte/15m_rad/flightlines/",
+                   name,"_", meangle)
+      writeLAS(aoi_subset,paste0(nm, ".las"))
+      pf74_mi_fls[[nm]] <- aoi_subset
+    }
   }
-  meangle_fl <- meangle_fl[meangle_fl[,3]>ar_th,]
-  aoi <- lasfilter(aoi, flightlineID %in% meangle_fl[,2])
-  writeLAS(aoi, paste0("D:/1_Work/2_Ciron/Data/ULM/LAS/unnorm/plots/17_5m_rad/", 
-                       name,
-                       "_n",
-                       ".las"))
-  aois_n[[name]] <- aoi 
 }
+
+
+
+
+pc74_co_n <- list()
+for(name in names(pc74_co)){
+  pc74_co_n[[name]] <- normalize_height(pc74_co[[name]], algorithm = tin())
+  # writeLAS(nrm, paste0("D:/1_Work/5_Bauges/Data/ULM/LAS/norm/plots/feuillus/15m_rad/allpoints/",
+  #                                  name,"_n.las"))
+}
+
+
+
+pc74 <- lapply(pc74_co, function(x)
+{
+  
+})

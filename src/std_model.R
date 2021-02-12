@@ -20,14 +20,25 @@ mets_dbs$varch <- as.numeric(mets_dbs$varch)
 mets_dbs$pf <- as.numeric(mets_dbs$pf)
 mets_dbs$cvlad <- as.numeric(mets_dbs$cvlad)
 
-mets_allang_co73 <- right_join(df_co73[,c(1,48)], 
+mets_dbs <- right_join(df_co73[,c(1,48)], 
                               mets_dbs, 
                               by=c("Id_plac"="id_placette"))
 
 
-mets_allang_co73 <- mets_allang_co73[complete.cases(mets_allang_co73),]
+mets_dbs <- mets_dbs[complete.cases(mets_dbs),]
 
-mdl_allang_co73 <- lm(data = mets_allang_co73, 
-            formula = log(G175)~log(meanch)+log(varch)+log(pf)+log(cvlad))
+mdl_dbs <- lm(data = all_data, 
+              formula = log(sum_ba_hec)~log(meanch)+log(varch)+log(gfvox)+log(cvladvox))
 
-summary(mdl_allang_co73)
+mdl_dbs_loocv <- train(log(sum_ba_hec)~log(meanch)+log(varch)+log(gfvox)+log(cvladvox),
+                       data = all_data,
+                       method = "lm",
+                       trControl = trainControl(method="LOOCV"))
+
+  r2 <- summary(mdl_dbs)$adj.r.squared
+  rmser <- rmse(log(mets_dbs[, 2]), predict(mdl_dbs))
+  maer <- mean(abs(log(mets_dbs[, 2])-predict(mdl_dbs)))
+  r2cv <- mdl_dbs_loocv$results$Rsquared
+  rmsercv <- mdl_dbs_loocv$results$RMSE
+  maercv <- mdl_dbs_loocv$results$MAE
+
