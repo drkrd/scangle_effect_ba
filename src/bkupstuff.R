@@ -3,7 +3,7 @@ library(data.table)
 
 
 ##here read only normalised points clouds with label format "plotid_n"
-plots <- readLAScatalog("D:/1_Work/5_Bauges/Data/ULM/LAS/norm/plots/coniferes/15m_rad/flightlines/")
+plots <- readLAScatalog("D:/1_Work/5_Bauges/Data/ULM/LAS/norm/plots/mixte/15m_rad/allpoints/")
 ####VERY IMPORTANT WHEN PROCESSING INDIVIDUAL PLOTS
 opt_independent_files(plots) <- TRUE 
 
@@ -33,8 +33,8 @@ func_computeall <- function(chunk)
     cvladlidr = cvladlidr))
 }
 
-plotmets_fl_co <- catalog_apply(plots, func_computeall)
-plotmets_fl_co <- rbindlist(plotmets_fl_co)
+plotmets_all_mi <- catalog_apply(plots, func_computeall)
+plotmets_all_mi <- rbindlist(plotmets_all_mi)
 
 
 ##########################
@@ -60,7 +60,7 @@ cvladvox$id_placette <- as.factor(cvladvox$id_placette)
 cvladvox <- cvladvox[,`:=`(x=NULL)]
 # cvladvox <- cvladvox[-124,]
 
-plotmets_fl_co <- right_join(plotmets_fl_co, cvladvox, by=c("id_placette", "meanang"))
+plotmets_all_mi <- right_join(plotmets_all_mi, cvladvox, by=c("id_placette", "meanang"))
 
 
 #####################################################
@@ -88,7 +88,7 @@ pfvox <- apply(allvoxfiles, 1, function(x){
 
 pfvox <- rbindlist(pfvox)
 # pfvox <- pfvox[-124,]
-plotmets_fl_co <- right_join(plotmets_fl_co, pfvox, by=c("id_placette", "meanang"))
+plotmets_all_mi <- right_join(plotmets_all_mi, pfvox, by=c("id_placette", "meanang"))
 
 # plots_metrics <- na.omit(plots_metrics)
 # plots_metrics_fe <- plots_metrics_fe[!which(plots_metrics$meanang%in%c(37.83,43.78,49.45,28.53)),]
@@ -98,15 +98,18 @@ plotmets_fl_co <- right_join(plotmets_fl_co, pfvox, by=c("id_placette", "meanang
 #Several iterations of models with random flight line chosen per plot
 #####################################################################
 
+fieldmets_mi <- placette.mes[which(placette.mes$Id_plac %in% plotmets_all_mi$id_placette),c("Id_plac","G175")]
+colnames(fieldmets_mi) <- c("id_placette", "G175")
+
 library(parallel)
 library(foreach)
 library(doParallel)
 
 clus <- makeCluster(detectCores() - 1)
 registerDoParallel(clus, cores = detectCores() - 1)
-mdl_co74_cvladvox <- foreach(i = 1:5000, .packages=c("dplyr", "data.table", "caret"), .combine='rbind') %dopar% {
-  mets_for_model <- plotmets_fl_co[, .SD[sample(.N, min(1,.N))], by = id_placette]
-  mets_for_model <- right_join(placmes_co74, mets_for_model, by="id_placette")
+mdl_all_mi_cvladvox <- foreach(i = 1:1, .packages=c("dplyr", "data.table", "caret"), .combine='rbind') %dopar% {
+  mets_for_model <- plotmets_all_mi[, .SD[sample(.N, min(1,.N))], by = id_placette]
+  mets_for_model <- right_join(fieldmets_mi, mets_for_model, by="id_placette")
   
   
   
@@ -116,7 +119,7 @@ mdl_co74_cvladvox <- foreach(i = 1:5000, .packages=c("dplyr", "data.table", "car
   
   
   
-  model <- train(log(G175)~log(meanch)+log(varch)+log(pflidr)+log(cvladvox),
+  model <- train(log(G175)~log(meanch)+log(varch)+log(1-pflidr)+log(cvladvox),
                  data = mets_for_model,
                  method = "lm",
                  trControl = trainControl(method="LOOCV"))
@@ -126,39 +129,31 @@ mdl_co74_cvladvox <- foreach(i = 1:5000, .packages=c("dplyr", "data.table", "car
 }
 stopCluster(clus)
 
-mdl_co74_cvladvox <- cbind(mdl_co74_cvladvox, rep("cvladvox",nrow(mdl_fe_cvvox)))
-mdl_co74_lidr <- cbind(mdl_co74_lidr, rep("lidr",nrow(mdl_fe_lidr)))
-mdl_co74_pfcvvox <- cbind(mdl_co74_vox, rep("vox",nrow(mdl_fe_pfcvvox)))
-mdl_co74_pfvox <- cbind(mdl_co74_pfvox, rep("pfvox",nrow(mdl_fe_pfvox)))
-
-
-arrangedata <- function(x1,x2,x3,x4)
-{
-  x1 <- setDT(as.data.frame(cbind(x1, rep("lidr",nrow(x1)))))
-  x2 <- setDT(as.data.frame(cbind(x2, rep("cvladvox",nrow(x2)))))
-  x3 <- setDT(as.data.frame(cbind(x3, rep("pfvox",nrow(x3)))))
-  x4 <- setDT(as.data.frame(cbind(x4, rep("vox",nrow(x4)))))
-  
-  colnames(x1) <- c("rmse", "mae", "r2", "type")
-  colnames(x2) <- c("rmse", "mae", "r2", "type")
-  colnames(x3) <- c("rmse", "mae", "r2", "type")
-  colnames(x4) <- c("rmse", "mae", "r2", "type")
-  
-  
-  rmsevals <- rbind(x1[,c(1,4)],x2[,c(1,4)], x3[,c(1,4)], x4[,c(1,4)])
-  maevals <- rbind(x1[,c(2,4)],x2[,c(2,4)], x3[,c(2,4)], x4[,c(2,4)])
-  r2vals <- rbind(x1[,c(3,4)],x2[,c(3,4)], x3[,c(3,4)], x4[,c(3,4)])
-  
-  return(list(rmse=rmsevals, mae=maevals, r2=r2vals))
-}
-
-
-dta <- arrangedata(mdl_co74_lidr, mdl_co74_cvladvox, mdl_co74_pfvox, mdl_co74_vox)
 
 
 
 
 
+
+
+
+
+
+mdl_all_mi <- rbind(mdl_all_mi_lidr, mdl_all_mi_vox, mdl_all_mi_pfvox, mdl_all_mi_cvladvox)
+mdl_all_mi <- setDT(as.data.frame(mdl_all_mi))
+mdl_all_mi <- cbind(mdl_all_mi, c("lidr", "vox", "pfvox", "cvladvox"))
+colnames(mdl_all_mi) <- c("rmse", "mae", "r2", "type")
+rownames(mdl_all_mi) <- NULL
+mdl_all_mi$type <- as.factor(mdl_all_mi$type)
+mdl_all_mi <- melt(mdl_all_mi, id.vars = "type")
+mdl_all_mi <- setDT(mdl_all_mi)
+
+
+
+mdl_all_fe_cvladvox <- cbind(mdl_all_fe_cvladvox, rep("cvvox",nrow(mdl_all_fe_cvladvox)))
+mdl_all_fe_lidr <- cbind(mdl_all_fe_lidr, rep("lidr",nrow(mdl_all_fe_lidr)))
+mdl_all_fe_vox <- cbind(mdl_all_fe_vox, rep("pfcvvox",nrow(mdl_all_fe_vox)))
+mdl_all_fe_pfvox <- cbind(mdl_all_fe_pfvox, rep("pfvox",nrow(mdl_all_fe_pfvox)))
 
 
 colnames(mdl_fe_pfvox) <- c("rmse", "mae", "r2", "type")
@@ -174,8 +169,28 @@ r2vals <- rbind(mdl_fe_lidr[,c(3,4)],mdl_fe_cvvox[,c(3,4)], mdl_fe_pfvox[,c(3,4)
 
 
 
-ggplot(data=dta$rmse, aes(x=rmse))+geom_histogram()+facet_grid(~type)+theme_minimal()
+ggplot(data=r2vals, aes(x=r2))+geom_histogram()+facet_grid(~type)+theme_minimal()
 ggplot(data=maevals, aes(y=mae, x=type))+geom_boxplot()+theme_minimal()
 plot(plots_metrics$pflidr,plots_metrics$pfvox)
 
 
+
+
+
+
+
+
+
+
+trn <- data.frame()
+x <- list.files("D:/1_Work/5_Bauges/Data/ULM/LAS/unnorm/plots/allpointsallplots/15m_rad/")
+for(i in x)
+{
+  nm <- file_path_sans_ext(basename(i))
+  ls <- readLAS(i)
+  ls <- grid_terrain(ls, res=0.1, tin())
+  crs(ls) <- CRS("+init=epsg:2154")
+  ls <- as.data.frame(terrain(ls, opt=c("slope", "aspect"), unit="degrees" ))
+  trn <- rbind(trn, c(mean(ls$slope, na.rm=TRUE), var(ls$slope, na.rm=TRUE), 
+                      mean(ls$aspect, na.rm=TRUE), var(ls$aspect, na.rm=TRUE)))
+}
