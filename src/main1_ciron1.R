@@ -6,7 +6,7 @@ library(ggplot2)
 library(ggthemes)
 library(gstat)
 
-typefor <- ""
+typefor <- " "
 typepc <- "allpoints"
 # l1 <- ifelse(typefor=="conifere","con",
 #              ifelse(typefor=="feuillus","feu","mix"))
