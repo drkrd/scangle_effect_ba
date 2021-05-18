@@ -77,6 +77,38 @@ plotmetsfl2 <- plotmetsfl2[, wt := (1/prob)/(1/sum(prob)), id_placette]
 plotmetsfl2 <- plotmetsfl2[, wt := wt/sum(wt), id_placette]
 
 
+plotmetsfl2ab=plotmetsfl2[plotmetsfl2[, .I[cid=="ab"  | all(cid!="ab")], by = id_placette]$V1]
+plotmetsfl2ac=plotmetsfl2[plotmetsfl2[, .I[cid=="ac"  | all(cid!="ac")], by = id_placette]$V1]
+plotmetsfl2bc=plotmetsfl2[plotmetsfl2[, .I[cid=="bc"  | all(cid!="bc")], by = id_placette]$V1]
+
+
+l1 <- unique(as.character(plotmetsfl2ab[cid=="ab"]$id_placette))
+l2 <- unique(as.character(plotmetsfl2ac[cid=="ac"]$id_placette))
+l3 <- unique(as.character(plotmetsfl2bc[cid=="bc"]$id_placette))
+
+cps <- intersect(intersect(l1, l2), l3)
+
+plotmetsfl2ab=plotmetsfl2ab[plotmetsfl2ab[, all(cid != 'ab')| (cid == 'ab' & .BY %in% cps)|!.BY %in% cps, 
+                                     by = id_placette]$V1]
+plotmetsfl2ab <- unique(plotmetsfl2ab[, prob := prop.table(table(cid))[cid], id_placette][])
+plotmetsfl2ab <- plotmetsfl2ab[, wt := (1/prob)/(1/sum(prob)), id_placette]
+plotmetsfl2ab <- plotmetsfl2ab[, wt := wt/sum(wt), id_placette]
+
+
+plotmetsfl2ac=plotmetsfl2ac[plotmetsfl2ac[, all(cid != 'ac')| (cid == 'ac' & .BY %in% cps)|!.BY %in% cps, 
+                                          by = id_placette]$V1]
+plotmetsfl2ac <- unique(plotmetsfl2ac[, prob := prop.table(table(cid))[cid], id_placette][])
+plotmetsfl2ac <- plotmetsfl2ac[, wt := (1/prob)/(1/sum(prob)), id_placette]
+plotmetsfl2ac <- plotmetsfl2ac[, wt := wt/sum(wt), id_placette]
+
+
+plotmetsfl2bc=plotmetsfl2bc[plotmetsfl2bc[, all(cid != 'bc')| (cid == 'bc' & .BY %in% cps)|!.BY %in% cps, 
+                                          by = id_placette]$V1]
+plotmetsfl2bc <- unique(plotmetsfl2bc[, prob := prop.table(table(cid))[cid], id_placette][])
+plotmetsfl2bc <- plotmetsfl2bc[, wt := (1/prob)/(1/sum(prob)), id_placette]
+plotmetsfl2bc <- plotmetsfl2bc[, wt := wt/sum(wt), id_placette]
+
+
 fd_smry <- fread("D:/1_Work/2_Ciron/Data/var_dendro_ciron.csv", sep = ",", drop = "id_placette")
 colnames(fd_smry)[1] <- "id_placette"
 fd_smry[, id_placette := as.factor(id_placette)]
@@ -84,12 +116,12 @@ setkey(fd_smry, "id_placette")
 
 
 
-n <- 10000
+n <- 5000
 set.seed(123)
 clus <- makeCluster(detectCores() - 1)
 registerDoParallel(clus, cores = detectCores() - 1)
-mdls_gfl2 <- foreach(i = 1:n, .packages=c("dplyr", "data.table", "caret")) %dopar% {
-  mets_for_model <- plotmetsfl2[, .SD[sample(.N, min(1,.N), prob=wt) ], by = id_placette]
+mdls_gfl2bc <- foreach(i = 1:n, .packages=c("dplyr", "data.table", "caret")) %dopar% {
+  mets_for_model <- plotmetsfl2bc[, .SD[sample(.N, min(1,.N), prob=wt) ], by = id_placette]
   setkey(mets_for_model,"id_placette")
   mets_for_model <- fd_smry[mets_for_model]
   
@@ -104,7 +136,57 @@ mdls_gfl2 <- foreach(i = 1:n, .packages=c("dplyr", "data.table", "caret")) %dopa
                                 "RMSE" = model$results$RMSE,
                                 "MAE" = model$results$MAE),
              "coeffs" = list(model$finalModel$coefficients),
-             "index" = which(plotmetsfl2$meanang %in% mets_for_model$meanang)))
+             "index" = which(plotmetsfl2bc$meanang %in% mets_for_model$meanang)))
+  return(x)
+}
+stopCluster(clus)
+registerDoSEQ()
+
+set.seed(123)
+clus <- makeCluster(detectCores() - 1)
+registerDoParallel(clus, cores = detectCores() - 1)
+mdls_vtotfl2bc <- foreach(i = 1:n, .packages=c("dplyr", "data.table", "caret")) %dopar% {
+  mets_for_model <- plotmetsfl2bc[, .SD[sample(.N, min(1,.N), prob=wt) ], by = id_placette]
+  setkey(mets_for_model,"id_placette")
+  mets_for_model <- fd_smry[mets_for_model]
+  
+  
+  model <- train(log(volume_total_m3_ha)~log(meanch)+log(varch)+log(pflidr)+log(cvladlidr),
+                 data = mets_for_model,
+                 method = "lm",
+                 trControl = trainControl(method="LOOCV"))
+  
+  
+  x <- (list("modelmets" = list("R2" = model$results$Rsquared, 
+                                "RMSE" = model$results$RMSE,
+                                "MAE" = model$results$MAE),
+             "coeffs" = list(model$finalModel$coefficients),
+             "index" = which(plotmetsfl2bc$meanang %in% mets_for_model$meanang)))
+  return(x)
+}
+stopCluster(clus)
+registerDoSEQ()
+
+set.seed(123)
+clus <- makeCluster(detectCores() - 1)
+registerDoParallel(clus, cores = detectCores() - 1)
+mdls_vtigfl2bc <- foreach(i = 1:n, .packages=c("dplyr", "data.table", "caret")) %dopar% {
+  mets_for_model <- plotmetsfl2bc[, .SD[sample(.N, min(1,.N), prob=wt) ], by = id_placette]
+  setkey(mets_for_model,"id_placette")
+  mets_for_model <- fd_smry[mets_for_model]
+  
+  
+  model <- train(log(volume_tige_m3_ha)~log(meanch)+log(varch)+log(pflidr)+log(cvladlidr),
+                 data = mets_for_model,
+                 method = "lm",
+                 trControl = trainControl(method="LOOCV"))
+  
+  
+  x <- (list("modelmets" = list("R2" = model$results$Rsquared, 
+                                "RMSE" = model$results$RMSE,
+                                "MAE" = model$results$MAE),
+             "coeffs" = list(model$finalModel$coefficients),
+             "index" = which(plotmetsfl2bc$meanang %in% mets_for_model$meanang)))
   return(x)
 }
 stopCluster(clus)
@@ -113,23 +195,31 @@ registerDoSEQ()
 
 
 
-mdlmets_gfl2 <- lapply(mdls_gfl2, function(x)
+
+
+func_extractmdlmets <- function(x)
 {
-  
   ind <- x[["index"]]
-  dbase <- plotmetsfl2[ind]
-  dbase <- dbase[!id_placette%in%c(21, 22, 26)]
-  ent <- func_entropy(dbase$cid)
+  dbase <- plotmetsfl2bc[ind]
+  # dbase <- dbase[!id_placette%in%c(21, 22, 26)]
+  ent <- func_entropy(dbase$cl)
   r2 <- x[["modelmets"]]$R2 
   rmse <- x[["modelmets"]]$RMSE
   mae <- x[["modelmets"]]$MAE
-  type <- rep("2 flight lines")
+  type <- rep("2 flight line bc")
   # names(tbl[which(tbl==max(tbl))])
   return(list("ent"=ent,"r2"=r2, "rmse"=rmse, "mae"=mae, "type"=type))
-})
-mdlmets_gfl2 <- rbindlist(mdlmets_gfl2)
+}
 
 
+mdlmets_vtigfl2bc <- lapply(mdls_vtigfl2bc, func_extractmdlmets)
+mdlmets_vtigfl2bc <- rbindlist(mdlmets_vtigfl2bc)
+
+xyz <- rbind(mdlmets_vtigfl2, mdlmets_vtigfl2ab, mdlmets_vtigfl2ac, mdlmets_vtigfl2bc)
+
+
+ggplot(data=xyz, aes(y=r2, x=type))+
+  geom_boxplot()
 
 
 ggplot(data=mets_mdl_vtig1, aes(x=value, fill=flightlines))+

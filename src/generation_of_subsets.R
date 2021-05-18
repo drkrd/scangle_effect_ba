@@ -1,15 +1,15 @@
-for(name in names(aois_norm_30m))
+for(name in names(aois_unnorm_ciron30m))
 {
-  aoi <- aois_norm_30m[[name]]
+  aoi <- aois_unnorm_ciron30m[[name]]
   ext <- extent(aoi)
   xc <- ext@xmin+((ext@xmax-ext@xmin)/2)
   yc <- ext@ymin+((ext@ymax-ext@ymin)/2)
   aoi <- clip_circle(aoi, xc, yc, 15)
   aoi <- retrieve_flightlines(aoi)
-  # writeLAS(aoi, 
-  #          paste0("D:/1_Work/2_Ciron/Data/ULM/LAS/norm/plots/15m_rad/april2021/allpoints/",
+  # writeLAS(aoi,
+  #          paste0("D:/1_Work/2_Ciron/Data/ULM/LAS/unnorm/plots/15m_rad_test/may2021/allpoints/",
   #          name,"_n@all.las"))
-  
+
   ###########################################################################################
   flist <- unique(aoi@data$flightlineID)
   fls <- c()
@@ -17,20 +17,20 @@ for(name in names(aois_norm_30m))
   for(fl in flist)
   {
     aoifl <- filter_poi(aoi, flightlineID == fl)
-    ar <- area_calc(data.frame(x=aoifl@data$X, y=aoifl@data$Y))
+    ar <- func_areacalc(data.frame(x=aoifl@data$X, y=aoifl@data$Y))
     meangle <- round(abs(mean(aoifl@data$ScanAngleRank)),2)
     if(ar>0.9*pi*15*15)
     {
       fls <- c(fls, fl)
       angs <- c(angs, meangle)
-      nm <- paste0("D:/1_Work/2_Ciron/Data/ULM/LAS/norm/plots/15m_rad/april2021/flightlines_1/",
+      nm <- paste0("D:/1_Work/2_Ciron/Data/ULM/LAS/unnorm/plots/15m_rad_test/may2021/flightlines_1/",
                    name,"_n@", meangle, ".las")
-      # writeLAS(aoifl, nm)
+      writeLAS(aoifl, nm)
     }
   }
   #############################################################################################
   aoifl2 <- filter_poi(aoi, flightlineID %in% fls)
-  nm <- paste0("D:/1_Work/2_Ciron/Data/ULM/LAS/norm/plots/15m_rad/april2021/allpoints_fl/",
+  nm <- paste0("D:/1_Work/2_Ciron/Data/ULM/LAS/unnorm/plots/15m_rad_test/may2021/allpoints_fl/",
                name,"_n@allfls", ".las")
   writeLAS(aoifl2, nm)
   ##############################################################################################
@@ -44,18 +44,18 @@ for(name in names(aois_norm_30m))
       combos <- allcombos[,i]
       angs <- flstbl$angs[which(flstbl$fls%in%combos)]
       aoi_subset2 <- filter_poi(aoi, flightlineID %in% combos)
-      nm <- paste0("D:/1_Work/2_Ciron/Data/ULM/LAS/norm/plots/15m_rad/april2021/flightlines_2/",
+      nm <- paste0("D:/1_Work/2_Ciron/Data/ULM/LAS/unnorm/plots/15m_rad_test/may2021/flightlines_2/",
                    name, "_n@", paste(angs, collapse = "_"), ".las")
-      # writeLAS(aoi_subset2, nm)
+      writeLAS(aoi_subset2, nm)
     }
     
     
   }
   else{
     aoi_subset2 <- filter_poi(aoi, flightlineID %in% flstbl$fls)
-    nm <- paste0("D:/1_Work/2_Ciron/Data/ULM/LAS/norm/plots/15m_rad/april2021/flightlines_2/",
+    nm <- paste0("D:/1_Work/2_Ciron/Data/ULM/LAS/unnorm/plots/15m_rad_test/may2021/flightlines_2/",
                  name, "_n@", paste(flstbl$angs, collapse = "_"), ".las")
-    # writeLAS(aoi_subset2, nm)
+    writeLAS(aoi_subset2, nm)
   }
   ##############################################################################################
   combos=3
@@ -67,17 +67,17 @@ for(name in names(aois_norm_30m))
       combos <- allcombos[,i]
       angs <- flstbl$angs[which(flstbl$fls%in%combos)]
       aoi_subset3 <- filter_poi(aoi, flightlineID %in% combos)
-      nm <- paste0("D:/1_Work/2_Ciron/Data/ULM/LAS/norm/plots/15m_rad/april2021/flightlines_3/",
+      nm <- paste0("D:/1_Work/2_Ciron/Data/ULM/LAS/unnorm/plots/15m_rad_test/may2021/flightlines_3/",
                    name, "_n@", paste(angs, collapse = "_"), ".las")
-      # writeLAS(aoi_subset3, nm)
+      writeLAS(aoi_subset3, nm)
     }
     
     
   }
   else{
     aoi_subset3 <- filter_poi(aoi, flightlineID %in% flstbl$fls)
-    nm <- paste0("D:/1_Work/2_Ciron/Data/ULM/LAS/norm/plots/15m_rad/april2021/flightlines_3/",
+    nm <- paste0("D:/1_Work/2_Ciron/Data/ULM/LAS/unnorm/plots/15m_rad_test/may2021/flightlines_3/",
                  name, "_n@", paste(flstbl$angs, collapse = "_"), ".las")
-    # writeLAS(aoi_subset3, nm)
+    writeLAS(aoi_subset3, nm)
   }
 }
