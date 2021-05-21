@@ -131,8 +131,8 @@ n <- 5000
 set.seed(123)
 clus <- makeCluster(detectCores() - 1)
 registerDoParallel(clus, cores = detectCores() - 1)
-mdls_gfl1pfcvlvx <- foreach(i = 1:n, .packages=c("dplyr", "data.table", "caret")) %dopar% {
-  mets_for_model <- plotmetsfl1[, .SD[sample(.N, min(1,.N), prob=wt) ], by = id_placette]
+mdls_gfl1cpfcvlvx <- foreach(i = 1:n, .packages=c("dplyr", "data.table", "caret")) %dopar% {
+  mets_for_model <- plotmetsfl1c[, .SD[sample(.N, min(1,.N), prob=wt) ], by = id_placette]
   setkey(mets_for_model,"id_placette")
   mets_for_model <- fd_smry[mets_for_model]
   
@@ -147,7 +147,7 @@ mdls_gfl1pfcvlvx <- foreach(i = 1:n, .packages=c("dplyr", "data.table", "caret")
                               "RMSE" = model$results$RMSE,
                               "MAE" = model$results$MAE),
              "coeffs" = list(model$finalModel$coefficients),
-             "index" = which(plotmetsfl1$meanang %in% mets_for_model$meanang)))
+             "index" = which(plotmetsfl1c$meanang %in% mets_for_model$meanang)))
   return(x)
 }
 stopCluster(clus)
@@ -157,8 +157,8 @@ registerDoSEQ()
 set.seed(123)
 clus <- makeCluster(detectCores() - 1)
 registerDoParallel(clus, cores = detectCores() - 1)
-mdls_vtotfl1pfcvlvx <- foreach(i = 1:n, .packages=c("dplyr", "data.table", "caret")) %dopar% {
-  mets_for_model <- plotmetsfl1[, .SD[sample(.N, min(1,.N), prob=wt) ], by = id_placette]
+mdls_vtotfl1cpfcvlvx <- foreach(i = 1:n, .packages=c("dplyr", "data.table", "caret")) %dopar% {
+  mets_for_model <- plotmetsfl1c[, .SD[sample(.N, min(1,.N), prob=wt) ], by = id_placette]
   setkey(mets_for_model,"id_placette")
   mets_for_model <- fd_smry[mets_for_model]
   
@@ -173,7 +173,7 @@ mdls_vtotfl1pfcvlvx <- foreach(i = 1:n, .packages=c("dplyr", "data.table", "care
                                 "RMSE" = model$results$RMSE,
                                 "MAE" = model$results$MAE),
              "coeffs" = list(model$finalModel$coefficients),
-             "index" = which(plotmetsfl1$meanang %in% mets_for_model$meanang)))
+             "index" = which(plotmetsfl1c$meanang %in% mets_for_model$meanang)))
   return(x)
 }
 stopCluster(clus)
@@ -183,8 +183,8 @@ registerDoSEQ()
 set.seed(123)
 clus <- makeCluster(detectCores() - 1)
 registerDoParallel(clus, cores = detectCores() - 1)
-mdls_vtigfl1pfcvlvx <- foreach(i = 1:n, .packages=c("dplyr", "data.table", "caret")) %dopar% {
-  mets_for_model <- plotmetsfl1[, .SD[sample(.N, min(1,.N), prob=wt) ], by = id_placette]
+mdls_vtigfl1cpfcvlvx <- foreach(i = 1:n, .packages=c("dplyr", "data.table", "caret")) %dopar% {
+  mets_for_model <- plotmetsfl1c[, .SD[sample(.N, min(1,.N), prob=wt) ], by = id_placette]
   setkey(mets_for_model,"id_placette")
   mets_for_model <- fd_smry[mets_for_model]
   
@@ -199,7 +199,7 @@ mdls_vtigfl1pfcvlvx <- foreach(i = 1:n, .packages=c("dplyr", "data.table", "care
                                 "RMSE" = model$results$RMSE,
                                 "MAE" = model$results$MAE),
              "coeffs" = list(model$finalModel$coefficients),
-             "index" = which(plotmetsfl1$meanang %in% mets_for_model$meanang)))
+             "index" = which(plotmetsfl1c$meanang %in% mets_for_model$meanang)))
   return(x)
 }
 stopCluster(clus)
@@ -208,7 +208,7 @@ registerDoSEQ()
 
 
 
-func_extractmdlmets <- function(x, type, exp)
+func_extractmdlmets <- function(x, type, exp, mets)
 {
   ind <- x[["index"]]
   # dbase <- plotmetsfl1[ind]
@@ -219,41 +219,64 @@ func_extractmdlmets <- function(x, type, exp)
   mae <- x[["modelmets"]]$MAE
   type <- type
   exp <- exp
+  mets <- mets
   # names(tbl[which(tbl==max(tbl))])
-  return(list("r2"=r2, "rmse"=rmse, "mae"=mae, "type"=type, "exp"=exp))
+  return(list("r2"=r2, "rmse"=rmse, "mae"=mae, "type"=type, "exp"=exp, "mets"=mets))
 }
 
 
-mdlmets_vtigfl1 <- lapply(mdls_vtigfl1, func_extractmdlmets, type="One flight line", exp="all")
-mdlmets_vtigfl1 <- rbindlist(mdlmets_vtigfl1)
-mdlmets_vtigfl1$type <- rep("One flight line", 5000)
-mdlmets_vtigfl1$exp <- rep("All", 5000)
-mdlmets_vtigfl1 <- unique(mdlmets_vtigfl1)
+mdlmets_vtotfl1b <- unique(rbindlist(lapply(mdls_vtigfl1b, 
+                                            func_extractmdlmets, 
+                                            type="One flight line", 
+                                            exp="mostly B", 
+                                            mets="old")))
+
 
 
 mdlmets_g <- rbind(mdlmets_gfl1, 
                    mdlmets_gfl1pfcvlvx,
-                   mdlmets_gfl1a, 
-                   mdlmets_gfl1b, 
-                   mdlmets_gfl1c)
-mdlmets_g <- unique(mdlmets_g)
-mdlmets_gx <- melt(mdlmets_g[-ent])
+                   mdlmets_gfl1a,
+                   mdlmets_gfl1apfcvlvx,
+                   mdlmets_gfl1b,
+                   mdlmets_gfl1bpfcvlvx,
+                   mdlmets_gfl1c,
+                   mdlmets_gfl1cpfcvlvx)
+mdlmets_g <- melt(mdlmets_g, id.vars = c("type", "exp", "mets"))
+mdlmets_g$for_attr <- rep("Basal area", nrow(mdlmets_g))
 
-mdlmets_vtot <- rbind(mdlmets_vtotfl1, mdlmets_vtotfl1a, mdlmets_vtotfl1b, mdlmets_vtotfl1c, mdlmets_vtotfl1t)
-mdlmets_vtot <- unique(mdlmets_vtot)
-mdlmets_vtotx <- melt(mdlmets_vtot[-ent])
+mdlmets_vtot <- rbind(mdlmets_vtotfl1, 
+                      mdlmets_vtotfl1pfcvlvx,
+                      mdlmets_vtotfl1a,
+                      mdlmets_vtotfl1apfcvlvx,
+                      mdlmets_vtotfl1b,
+                      mdlmets_vtotfl1bpfcvlvx,
+                      mdlmets_vtotfl1c,
+                      mdlmets_vtotfl1cpfcvlvx)
+mdlmets_vtot <- melt(mdlmets_vtot, id.vars = c("type", "exp", "mets"))
+mdlmets_vtot$for_attr <- rep("Total volume", nrow(mdlmets_vtot))
 
-mdlmets_vtig <- rbind(mdlmets_vtigfl1, mdlmets_vtigfl1a, mdlmets_vtigfl1b, mdlmets_vtigfl1c)
-mdlmets_vtig <- unique(mdlmets_vtig)
-mdlmets_vtigx <- melt(mdlmets_vtig[-ent])
+mdlmets_vtig <- rbind(mdlmets_vtigfl1, 
+                      mdlmets_vtigfl1pfcvlvx,
+                      mdlmets_vtigfl1a,
+                      mdlmets_vtigfl1apfcvlvx,
+                      mdlmets_vtigfl1b,
+                      mdlmets_vtigfl1bpfcvlvx,
+                      mdlmets_vtigfl1c,
+                      mdlmets_vtigfl1cpfcvlvx)
+mdlmets_vtig <- melt(mdlmets_vtig, id.vars = c("type", "exp", "mets"))
+mdlmets_vtig$for_attr <- rep("Stem volume", nrow(mdlmets_vtig))
 
 
-ggplot(data=mdlmets_gx[variable=="r2"], aes(x=type, y=value))+
+mdlmets <- rbind(mdlmets_g, mdlmets_vtot, mdlmets_vtig)
+
+
+ggplot(data=mdlmets, aes(x=exp, y=value, fill=mets))+
   geom_boxplot()+
-  labs(title = "", legend = "ref")+
-  theme_base(base_size = 14)+
-  facet_grid(rows=vars(variable), scales = "free")+
-  geom_hline(data = allmdlmets[met=="vtot" & variable=="r2"], aes(yintercept=value, linetype=ref), size=0.5)
+  labs(title = "")+
+  theme_base(base_size = 20)+
+  facet_grid(variable~for_attr, scales = "free")+
+  geom_hline(data = allmdlmets, aes(yintercept=value, linetype=type, colour=mets), size=1.5)+
+  scale_fill_pander()
   
   
 

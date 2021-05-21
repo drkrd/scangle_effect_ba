@@ -56,6 +56,7 @@ plotmetsall <- catalog_apply(plots, func_computeall)
 plotmetsall <- rbindlist(plotmetsall)
 plotmetsfl1max <- plotmetsfl1[plotmetsfl1[, .I[meanang == max(meanang)], by=id_placette]$V1]
 plotmetsfl1min <- plotmetsfl1[plotmetsfl1[, .I[meanang == min(meanang)], by=id_placette]$V1]
+##############################################################################################################
 allpcs <- list.files(paste0("D:/1_Work/2_Ciron/Data/ULM/LAS/unnorm/plots/15m_rad_test/may2021/allpoints/"),
                      pattern = "*.las",
                      full.names = TRUE)
@@ -79,9 +80,9 @@ pfcvladvox <- voxall[, .(cvladvox=cv(m, na.rm = TRUE), pfsumprof=exp(-0.5*sum(m,
 setkeyv(pfcvladvox, c("id_placette"))
 setkeyv(plotmetsall, c("id_placette"))
 plotmetsall <- plotmetsall[pfcvladvox]
-
+###############################################################################################################
 setkey(plotmetsall, "id_placette")
-dbase_mets_all <- fd_smry[plotmetsfl1min]
+dbase_mets_all <- fd_smry[plotmetsall]
 
 func_allmodels <- function(db)
 {
@@ -104,26 +105,33 @@ func_allmodels <- function(db)
   return(list("models" = mdl_all))
 }
 
-mdls_fl1min <- func_allmodels(dbase_mets_all)
+mdls_all <- func_allmodels(dbase_mets_all)
 
 allmdlmets <- rbind(mdls_fl1min[[1]]$G$results, 
                     mdls_fl1min[[1]]$v_tot$results, 
                     mdls_fl1min[[1]]$v_tig$results,
-                    mdls_fl1mint[[1]]$G$results, 
-                    mdls_fl1mint[[1]]$v_tot$results, 
-                    mdls_fl1mint[[1]]$v_tig$results,
+                    mdls_fl1minpfcvlvx[[1]]$G$results, 
+                    mdls_fl1minpfcvlvx[[1]]$v_tot$results, 
+                    mdls_fl1minpfcvlvx[[1]]$v_tig$results,
                     mdls_fl1max[[1]]$G$results, 
                     mdls_fl1max[[1]]$v_tot$results, 
                     mdls_fl1max[[1]]$v_tig$results,
-                    mdls_fl1maxt[[1]]$G$results, 
-                    mdls_fl1maxt[[1]]$v_tot$results, 
-                    mdls_fl1maxt[[1]]$v_tig$results,
+                    mdls_fl1maxpfcvlvx[[1]]$G$results, 
+                    mdls_fl1maxpfcvlvx[[1]]$v_tot$results, 
+                    mdls_fl1maxpfcvlvx[[1]]$v_tig$results,
                     mdls_all[[1]]$G$results, 
                     mdls_all[[1]]$v_tot$results, 
                     mdls_all[[1]]$v_tig$results,
-                    mdls_allt[[1]]$G$results, 
-                    mdls_allt[[1]]$v_tot$results, 
-                    mdls_allt[[1]]$v_tig$results)
+                    mdls_allpfcvlvx[[1]]$G$results, 
+                    mdls_allpfcvlvx[[1]]$v_tot$results, 
+                    mdls_allpfcvlvx[[1]]$v_tig$results)
+
+for_attr <- rep(c("Basal area", "Total volume", "Stem volume"), 6)
+mets <- rep(c(rep("old", 3), rep("vox", 3)),3)
+type <- c(rep("min", 6), rep("max", 6), rep("all", 6))
+
+allmdlmets <- cbind(allmdlmets, type)
+
 
 allmdlmetst <- rbind(mdls_allt[[1]]$G$results, 
                      mdls_allt[[1]]$v_tot$results, 
@@ -140,7 +148,9 @@ allmdlmets$met <- c(rep(c("G","vtot","vtig"),3))
 names(allmdlmets) <- c("rmse", "r2", "mae", "ref", "met")
 allmdlmets <- melt(allmdlmets)
 setDT(allmdlmets)
-
+allmdlmets <- allmdlmets[,-1]
+names(allmdlmets) <- c("rmse", "r2", "mae", "for_attr", "mets", "type")
+allmdlmets <- melt(allmdlmets[], id.vars=c("for_attr", "mets", "type"))
 
 
 
