@@ -1,4 +1,4 @@
-myProfilesLAD = function(Z, Zmax, dZ)
+myProfilesLAD = function(Z, Zmax, dZ, th)
 {
   # creating an empty list
   #print (max(Z))
@@ -9,7 +9,7 @@ myProfilesLAD = function(Z, Zmax, dZ)
   #creating layer names
   
   z_ini=c(0, Zmax)
-  lad_ini=LAD(z_ini, dz=dZ, k=0.5)
+  lad_ini=LAD(z_ini, dz=dZ, k=0.5, z0=th)
   
   # initialisation of the list 
   
@@ -32,7 +32,7 @@ myProfilesLAD = function(Z, Zmax, dZ)
   Z=Z[Z<Zmax & Z>0] # to filter outliers and to keep only positive heights
   if(length(Z)>0)
   {
-    profil_lad=LAD(Z, dz=dZ, k=0.5)
+    profil_lad=LAD(Z, dz=dZ, k=0.5, z0=5)
     if (dim(profil_lad)[1]>0)    # test to identify empty PAD profile (no vegetation above 1 m)
     {
       for (i in 1:dim(profil_lad)[1])
@@ -78,7 +78,7 @@ func_varch <- function(z, rn)
   }
 }
 
-func_pf <- function(z, rn)
+func_pf <- function(z, rn, ht)
 {
   aoi <- as.data.frame(cbind(z, rn))
   if (is.null(aoi))
@@ -88,12 +88,12 @@ func_pf <- function(z, rn)
   else
   {
     aoi_f <- aoi[aoi$rn==1,]
-    num <- aoi_f[aoi_f$z<=2,]
+    num <- aoi_f[aoi_f$z<=ht,]
     return(nrow(num)/nrow(aoi_f))
   }
 }
 
-func_cvlad <- function(z,rn)
+func_cvlad <- function(z, rn, ht)
 {
   aoi <- as.data.frame(cbind(z, rn))
   if (is.null(aoi)) 
@@ -104,25 +104,33 @@ func_cvlad <- function(z,rn)
   {
     v <- NULL
     zm = min(ceiling(max(aoi$z)), 60)
-    val = as.vector(unlist(myProfilesLAD(aoi$z, zm, dZ = 1)))
-    return(sd(val) / mean(val))
+    val = as.vector(unlist(myProfilesLAD(aoi$z, zm, dZ = 1, ht)))
+    return(sd(val, na.rm = T) / mean(val, na.rm = T ))
   }
 }
 
 func_areacalc = function(dfr)
 {
   #print(length(dfr$x))
-  ch_pts <- chull(dfr$x,dfr$y)
-  ch_pts <- c(ch_pts, ch_pts[1])
-  dfr <- dfr[ch_pts,]
-  dfr <- dfr %>% 
-    select(1:2) 
-  ch_poly <- Polygon(dfr, hole=F)
-  return(ch_poly@area)
+  if(nrow(dfr)<4)
+  {
+    return(0)
+  }
+  else
+  {
+    ch_pts <- chull(dfr$x,dfr$y)
+    ch_pts <- c(ch_pts, ch_pts[1])
+    dfr <- dfr[ch_pts,]
+    dfr <- dfr %>% 
+      select(1:2) 
+    ch_poly <- Polygon(dfr, hole=F)
+    return(ch_poly@area)
+  }
+
 }
 
 
-func_normvox2 <- function(x)
+func_normvox2 <- function(x, pth, ht)
 {
   txt <- readLines(x[1], n=3)[2:3]
   zmin <- as.numeric(unlist(strsplit(txt[[1]], "\\s+"))[4])
@@ -131,7 +139,7 @@ func_normvox2 <- function(x)
   
   
   #align DTM with voxel file
-  lasnm <- paste0("D:/1_Work/2_Ciron/Data/ULM/LAS/unnorm/plots/15m_rad_test/may2021/allpoints/", x[2], "@all.las")
+  lasnm <- paste0(pth, x[2], "@all.las")
   ls <- readLASheader(lasnm)
   empty_raster <- raster(ncol=round(ls@PHB[["Max X"]]-ls@PHB[["Min X"]]), 
                          nrow=round(ls@PHB[["Max Y"]]-ls@PHB[["Min Y"]]),
@@ -157,10 +165,10 @@ func_normvox2 <- function(x)
   # voxtbl <- voxtbl[, .(s1 = sum(is.nan(PadBVTotal))/length(PadBVTotal)), by=list(k1)]
   # voxtbl <- voxtbl[, .(s2 = sum(is.nan(PadBVTotal))), by=list(k1)]
   # 
-  voxtbl <- voxtbl[, c("id_placette","meanang") := .(sub("\\_n.*", "", x[2]), x[3]),]
+  voxtbl <- voxtbl[, c("id_placette","meanang") := .(sub("\\_un.*", "", x[2]), x[3]),]
   voxtbl <- voxtbl[, pfsumvox:=pf,]
   voxtbl <- voxtbl[1:max(which(m!=0))]
-  voxtbl <- voxtbl[k1>2]
+  voxtbl <- voxtbl[k1>ht]
   
   return(voxtbl)
 }

@@ -38,7 +38,7 @@ func_computeall <- function(chunk)
   pflidr <- func_pf(las@data$Z, las@data$ReturnNumber)
   cvladlidr <- func_cvlad(las@data$Z, las@data$ReturnNumber)
   return(list( 
-    id_placette = as.factor(id_plac),
+    id_placette = id_plac,
     meanang = mang,
     meanch = meanch,
     varch = varch,
@@ -98,8 +98,38 @@ l3 <- unique(plotmetsfl1c[cl=="c"]$id_placette)
 
 cps <- intersect(intersect(l1, l2), l3)
 
-plotmetsfl1a=plotmetsfl1[plotmetsfl1[, all(cl != 'a')| (cl == 'a' & .BY %in% cps)|!.BY %in% cps, 
+
+
+func_dffilter <- function(df, cls)
+{
+  df1 <- df[id_placette %in% cps]
+  df1 <- df1[df1[, .I[cl==cls  | all(cl!=cls)], by = id_placette]$V1]
+  df2 <- df[!id_placette %in% cps]
+  dfn <- rbind(df1, df2)
+  return(dfn)
+}
+
+
+plotmetsfl1a <- func_dffilter(plotmetsfl1, "a")
+plotmetsfl1a <- unique(plotmetsfl1a[, prob := prop.table(table(cl))[cl], id_placette][])
+plotmetsfl1a <- plotmetsfl1a[, wt := (1/prob)/(1/sum(prob)), id_placette]
+plotmetsfl1a <- plotmetsfl1a[, wt := wt/sum(wt), id_placette]
+
+
+plotmetsfl1b <- func_dffilter(plotmetsfl1, "b")
+plotmetsfl1b <- unique(plotmetsfl1b[, prob := prop.table(table(cl))[cl], id_placette][])
+plotmetsfl1b <- plotmetsfl1b[, wt := (1/prob)/(1/sum(prob)), id_placette]
+plotmetsfl1b <- plotmetsfl1b[, wt := wt/sum(wt), id_placette]
+
+plotmetsfl1c <- func_dffilter(plotmetsfl1, "c")
+plotmetsfl1c <- unique(plotmetsfl1c[, prob := prop.table(table(cl))[cl], id_placette][])
+plotmetsfl1c <- plotmetsfl1c[, wt := (1/prob)/(1/sum(prob)), id_placette]
+plotmetsfl1c <- plotmetsfl1c[, wt := wt/sum(wt), id_placette]
+
+
+plotmetsfl1a=plotmetsfl1[plotmetsfl1[, all(cl != 'a')| (cl == 'a' & .BY %in% cps)|!.BY %in% cps,
                                      by = id_placette]$V1]
+
 plotmetsfl1a <- unique(plotmetsfl1a[, prob := prop.table(table(cl))[cl], id_placette][])
 plotmetsfl1a <- plotmetsfl1a[, wt := (1/prob)/(1/sum(prob)), id_placette]
 plotmetsfl1a <- plotmetsfl1a[, wt := wt/sum(wt), id_placette]
