@@ -48,7 +48,7 @@ myProfilesLAD = function(Z, Zmax, dZ, th)
 }
 
 ## All following functions compute the values from a dataframe of the las data containing Z and return number only
-func_meanch <- function(z,rn)
+func_meanch <- function(z, rn, ht)
 {
   aoi <- as.data.frame(cbind(z, rn))
   if (is.null(aoi))
@@ -58,12 +58,12 @@ func_meanch <- function(z,rn)
   else
   {
     aoi_f <- aoi[aoi$rn==1,]
-    aoi_f_h <- aoi_f[aoi_f$z>2 & aoi_f$z<60,]
+    aoi_f_h <- aoi_f[aoi_f$z>ht & aoi_f$z<60,]
     return(mean(aoi_f_h$z))
   }
 }
 
-func_varch <- function(z, rn)
+func_varch <- function(z, rn, ht)
 {
   aoi <- as.data.frame(cbind(z, rn))
   if (is.null(aoi))
@@ -73,7 +73,7 @@ func_varch <- function(z, rn)
   else
   {
     aoi_f <- aoi[aoi$rn==1,]
-    aoi_f_h <- aoi_f[aoi_f$z>2 & aoi_f$z<60,]
+    aoi_f_h <- aoi_f[aoi_f$z>ht & aoi_f$z<60,]
     return(var(aoi_f_h$z))
   }
 }
@@ -176,12 +176,12 @@ func_normvox2 <- function(x, pth, ht)
   # ttl <- sum(voxtbl1$PadBVTotal, na.rm = TRUE)
   # ttl <- ttl/(pi*15*15)
   # pf <- exp(-0.5*ttl)
-  voxtbl <- voxtbl[, n:=length(PadBVTotal[!is.na(PadBVTotal)]), by=list(k1)]
-  voxtbl <- voxtbl[n>30]
+  # voxtbl <- voxtbl[, n:=length(PadBVTotal[!is.na(PadBVTotal)]), by=list(k1)]
+  # voxtbl <- voxtbl[n>30]
   voxtbl <- voxtbl[, .(m=mean(PadBVTotal, na.rm = TRUE), 
-                       var=var(PadBVTotal, na.rm = TRUE),
-                       lci=t.test(PadBVTotal, na.rm = TRUE)$conf.int[1],
-                       uci=t.test(PadBVTotal, na.rm = TRUE)$conf.int[2],
+                       # var=var(PadBVTotal, na.rm = TRUE),
+                       # lci=t.test(PadBVTotal, na.rm = TRUE)$conf.int[1],
+                       # uci=t.test(PadBVTotal, na.rm = TRUE)$conf.int[2],
                        s=sum(is.nan(PadBVTotal))/length(PadBVTotal)), by=list(k1)]
   
   # voxtbl <- voxtbl[, .(s1 = sum(!is.nan(y))), by=list(k1)]
