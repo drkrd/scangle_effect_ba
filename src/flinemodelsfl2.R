@@ -10,18 +10,10 @@ library(parallel)
 library(foreach)
 library(doParallel)
 
-typefor <- " "
-typepc <- "allpoints"
-# l1 <- ifelse(typefor=="conifere","con",
-#              ifelse(typefor=="feuillus","feu","mix"))
-# l2 <- ifelse(typepc=="flightlines","fl","all")
+plots <- readLAScatalog("D:/1_Work/2_Ciron/Data/ULM/LAS/norm/plots/15m_rad/april2021/flightlines_1/")
 
-
-####IMPORTANT#####
-##Here, read only NORMALISED POINT CLOUDS with label format "plotid_n.las"
-# plots <- readLAScatalog(paste0("D:/1_Work/5_Bauges/Data/ULM/LAS/norm/plots/", typefor, "/15m_rad/", typepc, "/"))
-plots <- readLAScatalog("D:/1_Work/2_Ciron/Data/ULM/LAS/norm/plots/15m_rad/april2021/flightlines_2/")
-opt_independent_files(plots) <- TRUE ####VERY IMPORTANT WHEN PROCESSING INDIVIDUAL PLOTS
+####VERY IMPORTANT WHEN PROCESSING INDIVIDUAL PLOTS
+opt_independent_files(plots) <- TRUE 
 func_computeall <- function(chunk)
 {
   las <- readLAS(chunk)                  # read the chunk
@@ -37,19 +29,18 @@ func_computeall <- function(chunk)
   }
   meanch <- func_meanch(las@data$Z, las@data$ReturnNumber)
   varch <- func_varch(las@data$Z, las@data$ReturnNumber)
-  pflidr <- func_pf(las@data$Z, las@data$ReturnNumber)
-  cvladlidr <- func_cvlad(las@data$Z, las@data$ReturnNumber)
+  pflidr <- func_pf(las@data$Z, las@data$ReturnNumber, ht=2)
+  cvladlidr <- func_cvlad(las@data$Z, las@data$ReturnNumber, ht=2)
   return(list( 
-    id_placette = as.factor(id_plac),
+    id_placette = id_plac,
     meanang = mang,
     meanch = meanch,
     varch = varch,
     pflidr = pflidr,
     cvladlidr = cvladlidr))
 }
-plotmetsfl2_orig <- catalog_apply(plots, func_computeall)
+plotmetsfl2 <- catalog_apply(plots, func_computeall)
 #############################################################################################################
-plotmetsfl2 <- plotmetsfl2_orig
 plotmetsfl2 <- rbindlist(plotmetsfl2)
 plotmetsfl2 <- plotmetsfl2[, c("fl1","fl2"):=tstrsplit(meanang,"_",fixed=T),]
 plotmetsfl2$fl1 <- as.numeric(plotmetsfl2$fl1)
@@ -64,7 +55,8 @@ plotmetsfl2 <- plotmetsfl2[, cl2:=ifelse(fl2>=0&fl2<10, "a",
                                            ifelse(fl2>=10&fl2<20, "b",
                                                   ifelse(fl2>=20&fl2<30, "c",
                                                          ifelse(fl2>=30&fl2<40,"d","e"))))]
-plotmetsfl2 <- plotmetsfl2[cl1 != "e" & cl2 != "e",]
+
+plotmetsfl2 <- plotmetsfl2[cl1 != "e" & cl2 != "e" & cl1 != "d" & cl2 != "e",]
 
 plotmetsfl2 <- plotmetsfl2[!fl1 %in% c(37.24, 7.16) & !fl2 %in% c(37.24, 7.16)]
 
@@ -101,12 +93,15 @@ allvoxfiles <- allvoxfiles[, cl2:=ifelse(fl2>=0&fl2<10, "a",
                                                 ifelse(fl2>=20&fl2<30, "c",
                                                        ifelse(fl2>=30&fl2<40,"d","e"))))]
 
-allvoxfiles <- allvoxfiles[cl1 != "e" & cl2 != "e",]
+allvoxfiles <- allvoxfiles[cl1 != "e" & cl2 != "e" & cl1 != "d" & cl2 != "e",]
 allvoxfiles <- allvoxfiles[!fl1 %in% c(37.24, 7.16) & !fl2 %in% c(37.24, 7.16)]
 voxall <- rbindlist(apply(allvoxfiles, 1, func_normvox2))
 setDT(voxall)
 pfcvladvox <- voxall[, .(cvladvox=cv(m, na.rm = TRUE), pfsumprof=exp(-0.5*sum(m, na.rm = TRUE))), by=.(id_placette, meanang, pfsumvox)]
 setkeyv(pfcvladvox, c("id_placette", "meanang"))
+pfcvladvox$id_placette <- sub("_.*","", pfcvladvox$id_placette)
+pfcvladvox$meanang <- as.numeric(pfcvladvox$meanang)
+plotmetsfl2$meanang <- as.numeric(plotmetsfl2$meanang)
 setkeyv(plotmetsfl2, c("id_placette", "meanang"))
 plotmetsfl2 <- plotmetsfl2[pfcvladvox]
 #############################################################################################################################

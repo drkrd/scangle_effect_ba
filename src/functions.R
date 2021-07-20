@@ -109,6 +109,22 @@ func_cvlad <- function(z, rn, ht)
   }
 }
 
+func_cvladprof <- function(z, rn, ht)
+{
+  aoi <- as.data.frame(cbind(z, rn))
+  if (is.null(aoi)) 
+  {
+    return(NULL)
+  } 
+  else
+  {
+    v <- NULL
+    zm = min(ceiling(max(aoi$z)), 60)
+    val = myProfilesLAD(aoi$z, zm, dZ = 1, ht)
+    return(val)
+    }
+}
+
 func_areacalc = function(dfr)
 {
   #print(length(dfr$x))
@@ -132,6 +148,7 @@ func_areacalc = function(dfr)
 
 func_normvox2 <- function(x, pth, ht)
 {
+  x <- as.vector(unlist(x))
   txt <- readLines(x[1], n=3)[2:3]
   zmin <- as.numeric(unlist(strsplit(txt[[1]], "\\s+"))[4])
   voxtbl <- fread(x[1], na.strings = "NA" , skip = 5)
@@ -155,20 +172,26 @@ func_normvox2 <- function(x, pth, ht)
   voxtbl <- voxtbl[alt>dtm]
   voxtbl <- voxtbl[, k1:= order(k), by=list(i,j)]
   voxtbl <- voxtbl[, k1:= k1-0.5]
-  voxtbl1 <- voxtbl[k1>2]
-  ttl <- sum(voxtbl1$PadBVTotal, na.rm = TRUE)
-  ttl <- ttl/(pi*15*15)
-  pf <- exp(-0.5*ttl)
-  voxtbl <- voxtbl[, .(m=mean(PadBVTotal, na.rm = TRUE), s=sum(is.nan(PadBVTotal))/length(PadBVTotal)), by=list(k1)]
+  voxtbl <- voxtbl[k1>ht]
+  # ttl <- sum(voxtbl1$PadBVTotal, na.rm = TRUE)
+  # ttl <- ttl/(pi*15*15)
+  # pf <- exp(-0.5*ttl)
+  voxtbl <- voxtbl[, n:=length(PadBVTotal[!is.na(PadBVTotal)]), by=list(k1)]
+  voxtbl <- voxtbl[n>30]
+  voxtbl <- voxtbl[, .(m=mean(PadBVTotal, na.rm = TRUE), 
+                       var=var(PadBVTotal, na.rm = TRUE),
+                       lci=t.test(PadBVTotal, na.rm = TRUE)$conf.int[1],
+                       uci=t.test(PadBVTotal, na.rm = TRUE)$conf.int[2],
+                       s=sum(is.nan(PadBVTotal))/length(PadBVTotal)), by=list(k1)]
   
   # voxtbl <- voxtbl[, .(s1 = sum(!is.nan(y))), by=list(k1)]
   # voxtbl <- voxtbl[, .(s1 = sum(is.nan(PadBVTotal))/length(PadBVTotal)), by=list(k1)]
   # voxtbl <- voxtbl[, .(s2 = sum(is.nan(PadBVTotal))), by=list(k1)]
   # 
   voxtbl <- voxtbl[, c("id_placette","meanang") := .(sub("\\_un.*", "", x[2]), x[3]),]
-  voxtbl <- voxtbl[, pfsumvox:=pf,]
+  # voxtbl <- voxtbl[, pfsumvox:=pf,]
   voxtbl <- voxtbl[1:max(which(m!=0))]
-  voxtbl <- voxtbl[k1>ht]
+  # voxtbl <- voxtbl[k1>ht]
   
   return(voxtbl)
 }

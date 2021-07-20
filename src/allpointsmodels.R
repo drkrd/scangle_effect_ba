@@ -36,15 +36,15 @@ func_computeall <- function(chunk)
   mang <- sub(".*@", "", basename(tools::file_path_sans_ext(chunk@files)))
   if(!is.na(as.numeric(mang)))
   {
-    mang <- round(as.numeric(mang),2)
+    mang <- round(as.numeric(mang), 2)
     
   }
   meanch <- func_meanch(las@data$Z, las@data$ReturnNumber)
   varch <- func_varch(las@data$Z, las@data$ReturnNumber)
-  pflidr <- func_pf(las@data$Z, las@data$ReturnNumber)
-  cvladlidr <- func_cvlad(las@data$Z, las@data$ReturnNumber)
+  pflidr <- func_pf(las@data$Z, las@data$ReturnNumber, ht=6)
+  cvladlidr <- func_cvlad(las@data$Z, las@data$ReturnNumber, ht=6)
   return(list( 
-    id_placette = as.factor(id_plac),
+    id_placette = id_plac,
     meanang = mang,
     meanch = meanch,
     varch = varch,
@@ -73,14 +73,36 @@ allvoxfiles <- as.data.table(list.files(paste0("D:/1_Work/2_Ciron/voxelisation/R
                                         full.names = TRUE))
 allvoxfiles[, id_placette := sub("\\@.*","",basename(file_path_sans_ext(V1)))]
 allvoxfiles[, meanang := sub(".*\\@","",basename(file_path_sans_ext(V1)))]
-voxall <- rbindlist(apply(allvoxfiles, 1, func_normvox2))
+voxall <- rbindlist(apply(allvoxfiles, 1, func_normvox2, pth="D:/1_Work/2_Ciron/Data/ULM/LAS/unnorm/plots/15m_rad_test/may2021/allpoints/", ht=2))
 setDT(voxall)
 voxall <- voxall[!meanang %in% c(37.24, 7.16, 49.7, 43.93)]
 pfcvladvox <- voxall[, .(cvladvox=cv(m, na.rm = TRUE), pfsumprof=exp(-0.5*sum(m, na.rm = TRUE))), by=.(id_placette, meanang, pfsumvox)]
+pfcvladvox$id_placette <- sub("_.*","",pfcvladvox$id_placette)
 setkeyv(pfcvladvox, c("id_placette"))
 setkeyv(plotmetsall, c("id_placette"))
 plotmetsall <- plotmetsall[pfcvladvox]
 ###############################################################################################################
+plotmetsflall <- plotmetsall
+plotmetsflmax <- plotmetsfl1[plotmetsfl1[, .I[meanang == max(meanang)], by=id_placette]$V1]
+plotmetsflmin <- plotmetsfl1[plotmetsfl1[, .I[meanang == min(meanang)], by=id_placette]$V1]
+
+
+dbflall <- fd_smry[plotmetsflall] 
+dbflmax <- fd_smry[plotmetsflmax] 
+dbflmin <- fd_smry[plotmetsflmin] 
+
+
+
+mdlmets_ref1 <- rbindlist(mdlmets_ref, idcol = "id")
+
+mdlmets_ref1 <- mdlmets_ref1[, c("for_attr","exp", "mets"):=tstrsplit(id,"_",fixed=T),]
+
+
+
+
+
+
+
 setkey(plotmetsall, "id_placette")
 dbase_mets_all <- fd_smry[plotmetsall]
 

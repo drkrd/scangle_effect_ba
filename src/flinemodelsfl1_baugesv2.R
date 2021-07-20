@@ -22,15 +22,14 @@ fd_smry <- fread("D:/1_Work/__R_codes/Projects/scangle_effect_ba/data/bauges_db_
 colnames(fd_smry)[2] <- "id_placette"
 
 
-fd_smry <- fd_smry[, newstratum := ifelse(G175R/G175>0.75 & G175F/G175<0.25 , "Coniferes", 
-                                          ifelse(G175F/G175>0.75 & G175R/G175<0.25, "Feuillus", "Mixte"))]
+fd_smry <- fd_smry[, newstratum := ifelse((G175R/G175)>0.75 & (G175F/G175)<0.25, "Resineux", 
+                                          ifelse((G175F/G175)>0.75 & (G175R/G175)<0.25, "Feuillus", "Mixte"))]
 fd_smry[, stratum := as.factor(stratum)]
 fd_smry[, newstratum := as.factor(newstratum)]
 fd_smry[, id_placette := as.factor(id_placette)]
+fd_smry <- fd_smry[which(id_placette %in% plot)]
 setkey(fd_smry, "id_placette")
-fd_smry_con <- fd_smry[newstratum=="Coniferes"]
-fd_smry_feu <- fd_smry[newstratum=="Feuillus"]
-fd_smry_mix <- fd_smry[newstratum=="Mixte"]
+
 
 # The following flightlines are problematic. There is no voxelisation for them
 # 283_74_ONF_un@6.28
@@ -53,8 +52,8 @@ func_computeall <- function(chunk)
   }
   meanch <- func_meanch(las@data$Z, las@data$ReturnNumber)
   varch <- func_varch(las@data$Z, las@data$ReturnNumber)
-  pflidr <- func_pf(las@data$Z, las@data$ReturnNumber, ht=6)
-  cvladlidr <- func_cvlad(las@data$Z, las@data$ReturnNumber, ht=6)
+  pflidr <- func_pf(las@data$Z, las@data$ReturnNumber, ht=5)
+  cvladlidr <- func_cvlad(las@data$Z, las@data$ReturnNumber, ht=5)
   return(list( 
     id_placette = id_plac,
     meanang = mang,
@@ -69,9 +68,20 @@ plotmetsfl1 <- plotmetsfl1[,cl:=ifelse(meanang>=0&meanang<10, "a",
                                        ifelse(meanang>=10&meanang<20, "b",
                                               ifelse(meanang>=20&meanang<30, "c",
                                                      ifelse(meanang>=30&meanang<40,"d","e"))))]
-plotmetsfl1 <- plotmetsfl1[cl!="e"]
-plotmetsfl1 <- plotmetsfl1[-c(419,488)]
+
+
+plotmetsfl1 <- plotmetsfl1[cl!="d" & cl!="e"]
 plotmetsfl1 <- na.omit(plotmetsfl1)
+pmetsfl1 <- plotmetsfl1
+pmetsfl1 <- pmetsfl1[-which(pmetsfl1$id_placette=="283_74_ONF" & pmetsfl1$meanang==6.28)]
+
+
+
+fd_smry <- fd_smry[which(id_placette %in% plotmetsfl1$id_placette), 
+                   c("id_placette", "G75", "volume_total", "volume_tige", "newstratum")]
+fd_smry_con <- fd_smry[newstratum=="Resineux"]
+fd_smry_feu <- fd_smry[newstratum=="Feuillus"]
+fd_smry_mix <- fd_smry[newstratum=="Mixte"]
 ##############################################################################################################################
 allpcs <- list.files(paste0("D:/1_Work/5_Bauges/Data/ULM/LAS/unnorm/plots/15m_rad/may2021/allpoints/"),
                      pattern = "*.las",
@@ -89,21 +99,27 @@ allvoxfiles <- as.data.table(list.files(paste0("D:/1_Work/5_Bauges/Voxelisation/
                                         full.names = TRUE))
 allvoxfiles[, id_placette := sub("\\@.*","",basename(file_path_sans_ext(V1)))]
 allvoxfiles[, meanang := sub(".*\\@","",basename(file_path_sans_ext(V1)))]
-voxall <- rbindlist(apply(allvoxfiles, 1, func_normvox2, pth ="D:/1_Work/5_Bauges/Data/ULM/LAS/unnorm/plots/15m_rad/may2021/allpoints/", ht=6))
+
+
+voxall <- rbindlist(apply(allvoxfiles, 1, 
+                          func_normvox2, pth ="D:/1_Work/5_Bauges/Data/ULM/LAS/unnorm/plots/15m_rad/may2021/allpoints/", 
+                          ht=5))
 setDT(voxall)
 pfcvladvox <- voxall[, .(cvladvox=cv(m, na.rm = TRUE), 
-                         pfsumprof=exp(-0.5*sum(m, na.rm = TRUE))), 
-                     by=.(id_placette, meanang, pfsumvox)]
+                         sdvfp=sqrt(sum(m*(k1-(sum(k1*m)/sum(m)))^2)/(sum(m)*(length(m[which(m!=0)])-1)/length(m[which(m!=0)]))),
+                         pfsumprof=exp(-0.5*sum(m, na.rm = TRUE))), by=.(id_placette, meanang)]
+
 
 pfcvladvox$meanang <- as.numeric(pfcvladvox$meanang)
 pfcvladvox <- pfcvladvox[,cl:=ifelse(meanang>=0&meanang<10, "a",
                                      ifelse(meanang>=10&meanang<20, "b",
                                             ifelse(meanang>=20&meanang<30, "c",
                                                    ifelse(meanang>=30&meanang<40,"d","e"))))]
-pfcvladvox <- pfcvladvox[cl!="e"]
+pfcvladvox <- pfcvladvox[cl!="d" & cl!="e"]
 setkeyv(pfcvladvox, c("id_placette", "meanang"))
-setkeyv(plotmetsfl1, c("id_placette", "meanang"))
-plotmetsfl1 <- plotmetsfl1[pfcvladvox]
+setkeyv(pmetsfl1, c("id_placette", "meanang"))
+pmetsfl1 <- pmetsfl1[pfcvladvox]
+pmetsfl1 <- pmetsfl1[which(id_placette %in% fd_smry$id_placette)]
 
 
 ######################################
@@ -113,82 +129,90 @@ plotmetsfl1 <- plotmetsfl1[pfcvladvox]
   plotmetsfl1 <- unique(plotmetsfl1[, prob := prop.table(table(cl))[cl], id_placette][])
   plotmetsfl1 <- plotmetsfl1[, wt := (1/prob)/(1/sum(prob)), id_placette]
   plotmetsfl1 <- plotmetsfl1[, wt := wt/sum(wt), id_placette]
-  plotmetsfl1$meanang <- as.factor(plotmetsfl1$meanang)
+  # plotmetsfl1$meanang <- as.factor(plotmetsfl1$meanang)
   plotmetsfl1 <- plotmetsfl1[pflidr!=0]
+  pmetsfl1.all <- plotmetsfl1
 }
 
-
+func_class.ssets <- function(pmets, cls)
+{
+  #tabulate per plot the number of pcs belonging to each class
+  tbl <- with(pmets, table(id_placette, cl))
+  
+  if(cls=="a")
+  {
+    #pick all the plots that have atleast one pc belonging to class a
+    pmets.withcl <- pmets[which(id_placette %in% rownames(tbl[which(tbl[,1]>0),]))]
+    
+    #pick all pcs belonging to class a ONLY from each of the plots extracted in the previous step
+    pmets.onlycl <- pmets[cl=="a"]
+    
+    #pick all the remaining plots that don't satisfy the above criteria to make sure all plots are picked at the end
+    pmets.wocl <- pmets[!which(id_placette %in% rownames(tbl[which(tbl[,1]>0),]))]
+    
+    #combine the plots which have only pcs belonging to class a and the plots wo any pcs belonging to class a
+    pmets.cl <- rbind(pmets.onlycl, pmets.wocl) 
+  }
+  else if(cls=="b")
+  {
+    #pick all the plots that have atleast one pc belonging to class a
+    pmets.withcl <- pmets[which(id_placette %in% rownames(tbl[which(tbl[,2]>0),]))]
+    
+    #pick all pcs belonging to class a ONLY from each of the plots extracted in the previous step
+    pmets.onlycl <- pmets[cl=="b"]
+    
+    #pick all the remaining plots that don't satisfy the above criteria to make sure all plots are picked at the end
+    pmets.wocl <- pmets[!which(id_placette %in% rownames(tbl[which(tbl[,2]>0),]))]
+    
+    #combine the plots which have only pcs belonging to class a and the plots wo any pcs belonging to class a
+    pmets.cl <- rbind(pmets.onlycl, pmets.wocl) 
+  }  
+  else
+  {
+    #pick all the plots that have atleast one pc belonging to class a
+    pmets.withcl <- pmets[which(id_placette %in% rownames(tbl[which(tbl[,3]>0),]))]
+    
+    #pick all pcs belonging to class a ONLY from each of the plots extracted in the previous step
+    pmets.onlycl <- pmets[cl=="c"]
+    
+    #pick all the remaining plots that don't satisfy the above criteria to make sure all plots are picked at the end
+    pmets.wocl <- pmets[!which(id_placette %in% rownames(tbl[which(tbl[,3]>0),]))]
+    
+    #combine the plots which have only pcs belonging to class a and the plots wo any pcs belonging to class a
+    pmets.cl <- rbind(pmets.onlycl, pmets.wocl) 
+  }
+  return(pmets.cl)
+}
 ######################################
 #############Coniferes################
 #############################################################################################################################
 
 {
-  #subset the plots that belong to coniferes 
-  plotmetsfl1_con <- plotmetsfl1[which(id_placette %in% fd_smry_con$id_placette)]
-  
-  #tabulate classes available in each placette
-  tbl <- with(plotmetsfl1_con, table(id_placette, cl))
-  
-  #extract those placettes which have atleast one pc belonging to class a
-  p.a.con <- plotmetsfl1_con[which(id_placette %in% rownames(tbl[which(tbl[,1]>0),]))]
-  p.b.con <- plotmetsfl1_con[which(id_placette %in% rownames(tbl[which(tbl[,2]>0),]))]
-  p.c.con <- plotmetsfl1_con[which(id_placette %in% rownames(tbl[which(tbl[,3]>0),]))]
-  
-  
-  
-  #extract those placettes which don't have any pc in class a 
-  #in other words, all the plots not in p.a.con
-  p.nota.con <- plotmetsfl1_con[!which(id_placette %in% rownames(tbl[which(tbl[,1]>0),]))]
-  p.notb.con <- plotmetsfl1_con[!which(id_placette %in% rownames(tbl[which(tbl[,2]>0),]))]
-  p.notc.con <- plotmetsfl1_con[!which(id_placette %in% rownames(tbl[which(tbl[,3]>0),]))]
-  
-  
-  
-  #select pointclouds in each placette which belong to class a
-  #p.a.con already has all the possible placettes which have atleast one pc belonging to class a 
-  #in this step we are only dropping the pcsnot belonging to class a in each placette
-  p.a.con <- p.a.con[cl=="a"]
-  p.b.con <- p.b.con[cl=="b"]
-  p.c.con <- p.c.con[cl=="c"]
-  
-  
-  #combine all the placettes which have only pcs belonging to class a with those without at any pcs in class a
-  pmetsa.con <- rbind(p.a.con, p.nota.con)
-  pmetsb.con <- rbind(p.b.con, p.notb.con)
-  pmetsc.con <- rbind(p.c.con, p.notc.con)
-  
-  
-  
-  #now we tabulate the data to know how many pcs are available per plot
-  with(pmetsa.con, table(id_placette, cl))
-  with(pmetsb.con, table(id_placette, cl))
-  with(pmetsc.con, table(id_placette, cl))
-  
-  
-  
-  #this gives use the total number of unique combinations possible with this data
-  prod(pmetsa.con[,.N,by=id_placette]$N)
-  prod(pmetsb.con[,.N,by=id_placette]$N)
-  prod(pmetsc.con[,.N,by=id_placette]$N)
-  
+  pmetsfl1.con.all <- pmetsfl1[which(id_placette %in% fd_smry_con$id_placette)]
 
+  pmetsfl1.con.cla <- func_class.ssets(pmetsfl1.con.all, "a")
+  pmetsfl1.con.cla <- unique(pmetsfl1.con.cla[, prob := prop.table(table(cl))[cl], id_placette][])
+  pmetsfl1.con.cla <- pmetsfl1.con.cla[, wt := (1/prob)/(1/sum(prob)), id_placette]
+  pmetsfl1.con.cla <- pmetsfl1.con.cla[, wt := wt/sum(wt), id_placette]
   
+  pmetsfl1.con.clb <- func_class.ssets(pmetsfl1.con.all, "b")
+  pmetsfl1.con.clb <- unique(pmetsfl1.con.clb[, prob := prop.table(table(cl))[cl], id_placette][])
+  pmetsfl1.con.clb <- pmetsfl1.con.clb[, wt := (1/prob)/(1/sum(prob)), id_placette]
+  pmetsfl1.con.clb <- pmetsfl1.con.clb[, wt := wt/sum(wt), id_placette]
   
-  p_con <- p_con[cl=="a"]
-  p_con <- rbind(p_con, p_con1)
-  
-  prod(plotmetsfl1a_con[,.N,by=id_placette]$N)
-  
-  
-  
-  
-  
-  plotmetsfl1_con <- plotmetsfl1[which(id_placette %in% fd_smry_con$id_placette)]
-  plotmetsfl1_con <- unique(plotmetsfl1_con[, prob := prop.table(table(cl))[cl], id_placette][])
-  plotmetsfl1_con <- plotmetsfl1_con[, wt := (1/prob)/(1/sum(prob)), id_placette]
-  plotmetsfl1_con <- plotmetsfl1_con[, wt := wt/sum(wt), id_placette]
-  plotmetsfl1_con$meanang <- as.factor(plotmetsfl1_con$meanang)
-  plotmetsfl1_con <- plotmetsfl1_con[pflidr!=0]
+  pmetsfl1.con.clc <- func_class.ssets(pmetsfl1.con.all, "c")
+  pmetsfl1.con.clc <- unique(pmetsfl1.con.clc[, prob := prop.table(table(cl))[cl], id_placette][])
+  pmetsfl1.con.clc <- pmetsfl1.con.clc[, wt := (1/prob)/(1/sum(prob)), id_placette]
+  pmetsfl1.con.clc <- pmetsfl1.con.clc[, wt := wt/sum(wt), id_placette]
+}
+
+{
+  pmetsfl1.con.all <- pmetsfl1[which(id_placette %in% fd_smry_con$id_placette)]
+  pmetsfl1.con.all <- pmetsfl1.con.all[pflidr!=0]
+  pmetsfl1.con.all <- unique(pmetsfl1.con.all[, prob := prop.table(table(cl))[cl], id_placette][])
+  pmetsfl1.con.all <- pmetsfl1.con.all[, wt := (1/prob)/(1/sum(prob)), id_placette]
+  pmetsfl1.con.all <- pmetsfl1.con.all[, wt := wt/sum(wt), id_placette]
+  pmetsfl1.con.all$meanang <- as.factor(pmetsfl1.con.all$meanang)
   ##############################################################################################################################
   
   plotmetsfl1a_con=plotmetsfl1_con[plotmetsfl1_con[, .I[cl=="a"  | all(cl!="a")], by = id_placette]$V1]
@@ -261,12 +285,31 @@ plotmetsfl1 <- plotmetsfl1[pfcvladvox]
 ###########################################################################################################################
 
 {
-  plotmetsfl1_feu <- plotmetsfl1[which(id_placette %in% fd_smry_feu$id_placette)]
-  plotmetsfl1_feu <- unique(plotmetsfl1_feu[, prob := prop.table(table(cl))[cl], id_placette][])
-  plotmetsfl1_feu <- plotmetsfl1_feu[, wt := (1/prob)/(1/sum(prob)), id_placette]
-  plotmetsfl1_feu <- plotmetsfl1_feu[, wt := wt/sum(wt), id_placette]
-  plotmetsfl1_feu$meanang <- as.factor(plotmetsfl1_feu$meanang)
-  plotmetsfl1_feu <- plotmetsfl1_feu[pflidr!=0]
+  pmetsfl1.feu.all <- pmetsfl1[which(id_placette %in% fd_smry_feu$id_placette)]
+  
+  pmetsfl1.feu.cla <- func_class.ssets(pmetsfl1.feu.all, "a")
+  pmetsfl1.feu.cla <- unique(pmetsfl1.feu.cla[, prob := prop.table(table(cl))[cl], id_placette][])
+  pmetsfl1.feu.cla <- pmetsfl1.feu.cla[, wt := (1/prob)/(1/sum(prob)), id_placette]
+  pmetsfl1.feu.cla <- pmetsfl1.feu.cla[, wt := wt/sum(wt), id_placette]
+  
+  pmetsfl1.feu.clb <- func_class.ssets(pmetsfl1.feu.all, "b")
+  pmetsfl1.feu.clb <- unique(pmetsfl1.feu.clb[, prob := prop.table(table(cl))[cl], id_placette][])
+  pmetsfl1.feu.clb <- pmetsfl1.feu.clb[, wt := (1/prob)/(1/sum(prob)), id_placette]
+  pmetsfl1.feu.clb <- pmetsfl1.feu.clb[, wt := wt/sum(wt), id_placette]
+  
+  pmetsfl1.feu.clc <- func_class.ssets(pmetsfl1.feu.all, "c")
+  pmetsfl1.feu.clc <- unique(pmetsfl1.feu.clc[, prob := prop.table(table(cl))[cl], id_placette][])
+  pmetsfl1.feu.clc <- pmetsfl1.feu.clc[, wt := (1/prob)/(1/sum(prob)), id_placette]
+  pmetsfl1.feu.clc <- pmetsfl1.feu.clc[, wt := wt/sum(wt), id_placette]
+}
+
+{
+  pmetsfl1.feu.all <- plotmetsfl1[which(id_placette %in% fd_smry_feu$id_placette)]
+  pmetsfl1.feu.all <- pmetsfl1.feu.all[pflidr!=0]
+  pmetsfl1.feu.all <- unique(pmetsfl1.feu.all[, prob := prop.table(table(cl))[cl], id_placette][])
+  pmetsfl1.feu.all <- pmetsfl1.feu.all[, wt := (1/prob)/(1/sum(prob)), id_placette]
+  pmetsfl1.feu.all <- pmetsfl1.feu.all[, wt := wt/sum(wt), id_placette]
+  pmetsfl1.feu.all$meanang <- as.factor(pmetsfl1.feu.all$meanang)
   ###########################################################################################################################
   
   plotmetsfl1a_feu=plotmetsfl1_feu[plotmetsfl1_feu[, .I[cl=="a"  | all(cl!="a")], by = id_placette]$V1]
@@ -303,19 +346,43 @@ plotmetsfl1 <- plotmetsfl1[pfcvladvox]
 ######################################
 ################Mixte#################
 ###########################################################################################################################
+
 {
-  plotmetsfl1_mix <- plotmetsfl1[which(id_placette %in% fd_smry_mix$id_placette)]
-  plotmetsfl1_mix <- unique(plotmetsfl1_mix[, prob := prop.table(table(cl))[cl], id_placette][])
-  plotmetsfl1_mix <- plotmetsfl1_mix[, wt := (1/prob)/(1/sum(prob)), id_placette]
-  plotmetsfl1_mix <- plotmetsfl1_mix[, wt := wt/sum(wt), id_placette]
-  plotmetsfl1_mix$meanang <- as.factor(plotmetsfl1_mix$meanang)
-  plotmetsfl1_mix <- plotmetsfl1_mix[pflidr!=0]
+  pmetsfl1.mix.all <- pmetsfl1[which(id_placette %in% fd_smry_mix$id_placette)]
+  pmetsfl1.mix.all <- pmetsfl1.mix.all[pflidr!=0]
+  pmetsfl1.mix.all <- unique(pmetsfl1.mix.all[, prob := prop.table(table(cl))[cl], id_placette][])
+  pmetsfl1.mix.all <- pmetsfl1.mix.all[, wt := (1/prob)/(1/sum(prob)), id_placette]
+  pmetsfl1.mix.all <- pmetsfl1.mix.all[, wt := wt/sum(wt), id_placette]
+  
+  pmetsfl1.mix.cla <- func_class.ssets(pmetsfl1.mix.all, "a")
+  pmetsfl1.mix.cla <- unique(pmetsfl1.mix.cla[, prob := prop.table(table(cl))[cl], id_placette][])
+  pmetsfl1.mix.cla <- pmetsfl1.mix.cla[, wt := (1/prob)/(1/sum(prob)), id_placette]
+  pmetsfl1.mix.cla <- pmetsfl1.mix.cla[, wt := wt/sum(wt), id_placette]
+  
+  pmetsfl1.mix.clb <- func_class.ssets(pmetsfl1.mix.all, "b")
+  pmetsfl1.mix.clb <- unique(pmetsfl1.mix.clb[, prob := prop.table(table(cl))[cl], id_placette][])
+  pmetsfl1.mix.clb <- pmetsfl1.mix.clb[, wt := (1/prob)/(1/sum(prob)), id_placette]
+  pmetsfl1.mix.clb <- pmetsfl1.mix.clb[, wt := wt/sum(wt), id_placette]
+  
+  pmetsfl1.mix.clc <- func_class.ssets(pmetsfl1.mix.all, "c")
+  pmetsfl1.mix.clc <- unique(pmetsfl1.mix.clc[, prob := prop.table(table(cl))[cl], id_placette][])
+  pmetsfl1.mix.clc <- pmetsfl1.mix.clc[, wt := (1/prob)/(1/sum(prob)), id_placette]
+  pmetsfl1.mix.clc <- pmetsfl1.mix.clc[, wt := wt/sum(wt), id_placette]
+}
+
+{
+  pmetsfl1.mix.all <- plotmetsfl1[which(id_placette %in% fd_smry_mix$id_placette)]
+  pmetsfl1.mix.all <- pmetsfl1.mix.all[pflidr!=0]
+  pmetsfl1.mix.all <- unique(pmetsfl1.mix.all[, prob := prop.table(table(cl))[cl], id_placette][])
+  pmetsfl1.mix.all <- pmetsfl1.mix.all[, wt := (1/prob)/(1/sum(prob)), id_placette]
+  pmetsfl1.mix.all <- pmetsfl1.mix.all[, wt := wt/sum(wt), id_placette]
+  pmetsfl1.mix.all$meanang <- as.factor(pmetsfl1.mix.all$meanang)
   
   ###########################################################################################################################
   
-  plotmetsfl1a_mix=plotmetsfl1_mix[plotmetsfl1_mix[, .I[cl=="a"  | all(cl!="a")], by = id_placette]$V1]
-  plotmetsfl1b_mix=plotmetsfl1_mix[plotmetsfl1_mix[, .I[cl=="b"  | all(cl!="b")], by = id_placette]$V1]
-  plotmetsfl1c_mix=plotmetsfl1_mix[plotmetsfl1_mix[, .I[cl=="c"  | all(cl!="c")], by = id_placette]$V1]
+  plotmetsfl1a_mix=pmetsfl1.mix.all[pmetsfl1.mix.all[, .I[cl=="a"  | all(cl!="a")], by = id_placette]$V1]
+  plotmetsfl1b_mix=pmetsfl1.mix.all[pmetsfl1.mix.all[, .I[cl=="b"  | all(cl!="b")], by = id_placette]$V1]
+  plotmetsfl1c_mix=pmetsfl1.mix.all[pmetsfl1.mix.all[, .I[cl=="c"  | all(cl!="c")], by = id_placette]$V1]
   
   l1_mix <- unique(plotmetsfl1a_mix[cl=="a"]$id_placette)
   l2_mix <- unique(plotmetsfl1b_mix[cl=="b"]$id_placette)
@@ -346,7 +413,200 @@ plotmetsfl1 <- plotmetsfl1[pfcvladvox]
 
 
 
+###########################################################################################################
+##Generate samples######
+########################
+dbase <- pmetsfl1.mix.all
+clus <- makeCluster(detectCores() - 1)
+registerDoParallel(clus, cores = detectCores() - 1)
+smplstfl1.mix.all <- foreach(i = 1:10000, .packages=c("dplyr", "data.table", "caret")) %dopar% {
+  set.seed(i)
+  dbase.sset <- dbase[, .SD[sample(.N, min(1,.N), prob = wt)], by = id_placette]
+  return(which(dbase$cvladlidr%in%dbase.sset$cvladlidr & dbase$pflidr%in%dbase.sset$pflidr))
+  # return(sset)
+}
+stopCluster(clus)
+registerDoSEQ()
+smplstfl1.mix.all <- matrix(unlist(smplstfl1.mix.all), nrow = 47)
+smplstfl1.mix.all <- unique(as.data.table(t(smplstfl1.mix.all)))
 
+
+
+
+
+
+
+time_log <- data.frame()
+
+
+
+
+start <- Sys.time()
+dbase <- pmetsfl1.mix.all
+fds <- fd_smry_mix
+idx.lst <- smplstfl1.mix.all
+
+f1l <- log(G75)~log(meanch)+log(varch)+log(pflidr)+log(cvladlidr)
+f1v <- log(G75)~log(meanch)+log(varch)+log(pfsumprof)+log(cvladvox)
+f2l <- log(volume_total)~log(meanch)+log(varch)+log(pflidr)+log(cvladlidr)
+f2v <- log(volume_total)~log(meanch)+log(varch)+log(pfsumprof)+log(cvladvox)
+f3l <- log(volume_tige)~log(meanch)+log(varch)+log(pflidr)+log(cvladlidr)
+f3v <- log(volume_tige)~log(meanch)+log(varch)+log(pfsumprof)+log(cvladvox)
+
+
+##Simulations for basal area
+clus <- makeCluster(detectCores() - 1)
+registerDoParallel(clus, cores = detectCores() - 1)
+n <- 500
+baugesfl1.mix.all1 <- foreach(i = 1:n, .packages=c("dplyr", "data.table", "caret")) %dopar% {
+  idx <- as.vector(unlist(idx.lst[i]))
+  mets_for_model <- dbase[idx]
+  setkey(mets_for_model,"id_placette")
+  mets_for_model <- fds[mets_for_model]
+  
+  m1l <- train(f1l,
+                 data = mets_for_model,
+                 method = "lm",
+                 trControl = trainControl(method="LOOCV"))
+  G.l.coeff <- m1l$finalm1l$coefficients
+  G.l.pred <- m1l$pred$pred
+  G.l.obs <- m1l$pred$obs
+  
+  
+  
+  m1v <- train(f1v,
+                 data = mets_for_model,
+                 method = "lm",
+                 trControl = trainControl(method="LOOCV"))
+  G.v.coeff <- m1v$finalm1v$coefficients
+  G.v.pred <- m1v$pred$pred
+  G.v.obs <- m1v$pred$obs
+  ##########################################################
+  
+  ##########################################################
+  m2l <- train(f2l,
+                 data = mets_for_model,
+                 method = "lm",
+                 trControl = trainControl(method="LOOCV"))
+  vtot.l.coeff <- m2l$finalm2l$coefficients
+  vtot.l.pred <- m2l$pred$pred
+  vtot.l.obs <- m2l$pred$obs
+  
+  m2v <- train(f2v,
+                 data = mets_for_model,
+                 method = "lm",
+                 trControl = trainControl(method="LOOCV"))
+  vtot.v.coeff <- m2v$finalm2v$coefficients
+  vtot.v.pred <- m2v$pred$pred
+  vtot.v.obs <- m2v$pred$obs
+  ##########################################################
+  
+  ###########################################################
+  m3l <- train(f3l,
+                 data = mets_for_model,
+                 method = "lm",
+                 trControl = trainControl(method="LOOCV"))
+  vtig.l.coeff <- m3l$finalm3l$coefficients
+  vtig.l.pred <- m3l$pred$pred
+  vtig.l.obs <- m3l$pred$obs
+  
+  m3v <- train(f3v,
+                 data = mets_for_model,
+                 method = "lm",
+                 trControl = trainControl(method="LOOCV"))
+  vtig.v.coeff <- m3v$finalm3v$coefficients
+  vtig.v.pred <- m3v$pred$pred
+  vtig.v.obs <- m3v$pred$obs
+  ############################################################
+  
+  
+  
+  
+  x <- (list("G.lidr.pred" = G.l.pred,
+             "G.lidr.obs" = G.l.obs,
+             "G.vox.pred" = G.v.pred,
+             "G.vox.obs" = G.v.obs,
+             "vtot.lidr.pred" = vtot.l.pred,
+             "vtot.lidr.obs" = vtot.l.obs,
+             "vtot.vox.pred" = vtot.v.pred,
+             "vtot.vox.obs" = vtot.v.obs,
+             "vtig.lidr.pred" = vtig.l.pred,
+             "vtig.lidr.obs" = vtig.l.obs,
+             "vtig.vox.pred" = vtig.v.pred,
+             "vtig.vox.obs" = vtig.v.obs,
+             "G.l.coeff" = G.l.coeff,
+             "G.v.coeff" = G.v.coeff,
+             "vtot.l.coeff" = vtot.l.coeff,
+             "vtot.v.coeff" = vtot.v.coeff,
+             "vtig.l.coeff" = vtig.l.coeff,
+             "vtig.v.coeff" = vtig.v.coeff
+  ))
+  return(x)
+}
+stopCluster(clus)
+registerDoSEQ()
+
+stop <- Sys.time()
+time_log <- rbind(time_log, c(n, (stop-start)))
+
+
+
+func_mdlmets <- function(obs, pred, for_attr, mettype)
+{
+  yobs <- exp(obs)
+  ypred <- exp(pred)
+  see <- sqrt(sum((obs-pred)^2)/(length(obs)-4))
+  cf <- exp((see^2)/2)
+  ypred <- ypred*cf
+  R2 <- cor(ypred, yobs)^2
+  aR2 <- 1-((1-R2)*(length(ypred)-1)/(length(ypred)-4-1))
+  MPE <- (100/length(ypred))*sum((yobs-ypred)/yobs)
+  RMSE <- sqrt(mean((yobs-ypred)^2))
+  MAE <- mean(abs(ypred-yobs))
+  return(list( "Forest_attr"=for_attr, "Metrics"=mettype, "R2"=aR2, "MPE"=MPE, "RMSE"=RMSE,"MAE"=MAE))
+}
+
+
+bgs.mdlmetsfl1.mix.all <- melt(rbindlist(lapply(baugesfl1.mix.all1, function(x)
+{
+  G.l.mdlmets <- func_mdlmets(x$G.lidr.obs, x$G.lidr.pred, "Basal area", "old")
+  G.v.mdlmets <- func_mdlmets(x$G.vox.obs, x$G.vox.pred, "Basal area", "vox")
+  vtot.l.mdlmets <- func_mdlmets(x$vtot.lidr.obs, x$vtot.lidr.pred, "Total volume", "old")
+  vtot.v.mdlmets <- func_mdlmets(x$vtot.vox.obs, x$vtot.vox.pred, "Total volume", "vox")
+  vtig.l.mdlmets <- func_mdlmets(x$vtig.lidr.obs, x$vtig.lidr.pred, "Stem volume", "old")
+  vtig.v.mdlmets <- func_mdlmets(x$vtig.vox.obs, x$vtig.vox.pred, "Stem volume", "vox")
+  y <- list(G.l.mdlmets,
+            G.v.mdlmets,
+            vtot.l.mdlmets,
+            vtot.v.mdlmets,
+            vtig.l.mdlmets,
+            vtig.v.mdlmets)
+  metdf <- rbindlist(y)
+  return(metdf)
+})), measure.vars = c("R2", "MPE", "RMSE", "MAE"))
+
+
+bgs.mdlmetsfl1.mix.all <- cbind(bgs.mdlmetsfl1.mix.all, "exp"=rep("all", nrow(bgs.mdlmetsfl1.mix.all)), "id"=rep(rep(1:500, 1, each=6), 4))
+
+bgs.mdlmetsfl1.mix <- as.data.table(rbind(bgs.mdlmetsfl1.mix.all))
+
+ggplot(data=bgs.mdlmetsfl1.mix, aes(y=value, colour=Metrics))+
+  geom_boxplot()+
+  facet_grid(variable~Forest_attr, scales = "free")+
+  theme_base()+
+  scale_fill_grey()
+
+
+
+idx <- as.vector(unlist(idx.lst[1]))
+mets_for_model <- dbase[idx]
+setkey(mets_for_model,"id_placette")
+mets_for_model <- fds[mets_for_model]
+
+m1l <- train(f1l,
+             data = mets_for_model,
+             method = "lm",
+             trControl = trainControl(method="LOOCV"))
 
 
 
@@ -740,14 +1000,6 @@ mdlmets_vtig$for_attr <- rep("Stem volume", nrow(mdlmets_vtig))
 
 
 mdlmets_all <- rbind(mdlmets_g, mdlmets_vtot, mdlmets_vtig)
-
-
-mdlmets_gx <- mdlmets_gx[, variable:=ifelse(variable=="r2", "R2",
-                                          ifelse(variable=="rmse", "RMSE",
-                                                 ifelse(variable=="mae", "MAE",
-                                                        ifelse(variable=="mpe", "MPE", variable))))]
-
-mdlmets_gx$variable <- factor(mdlmets_gx$variable, levels=c("R2", "MPE", "RMSE", "MAE"))
 
 
 ggplot(data=mdlmets_gx, aes(x=exp, y=value, fill=mets))+

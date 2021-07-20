@@ -50,7 +50,7 @@ keycols = c("id_placette", "meanang")
 setkeyv(plotmets, keycols)
 
 
-allpcs <- list.files(paste0("D:/1_Work/2_Ciron/Data/ULM/LAS/unnorm/plots/15m_rad_test/may2021/allpoints/"),
+allpcs <- list.files(paste0("D:/1_Work/1_Aigoual/Data/"),
                      pattern = "*.las",
                      full.names = TRUE)
 
@@ -61,7 +61,7 @@ alldtms <- sapply(allpcs, function(x){
   USE.NAMES = TRUE)
 names(alldtms) <- basename(file_path_sans_ext(names(alldtms)))
 
-allvoxfiles <- as.data.table(list.files(paste0("D:/1_Work/2_Ciron/voxelisation/Results/May/wo_interpolation/voxfiles/flightlines_1/"), 
+allvoxfiles <- as.data.table(list.files(paste0("D:/1_Work/1_Aigoual/paper_lenoir/"), 
                                         pattern = "*.vox",
                                         full.names = TRUE))
 allvoxfiles[, id_placette := sub("\\@.*","",basename(file_path_sans_ext(V1)))]
@@ -81,19 +81,19 @@ func_normvox2 <- function(x)
   
   
   #align DTM with voxel file
-  lasnm <- paste0("D:/1_Work/2_Ciron/Data/ULM/LAS/unnorm/plots/15m_rad_test/may2021/allpoints/", x[2], "@all.las")
-  ls <- readLASheader(lasnm)
+  lasnm <- paste0("D:/1_Work/1_Aigoual/Data/", x[2])
+  ls <- readLASheader("D:/1_Work/1_Aigoual/sset_for_paper_lenoir_UAV.las")
   empty_raster <- raster(ncol=round(ls@PHB[["Max X"]]-ls@PHB[["Min X"]]), 
                          nrow=round(ls@PHB[["Max Y"]]-ls@PHB[["Min Y"]]),
                          xmn=ls@PHB[["Min X"]], xmx= ls@PHB[["Max X"]], 
-                         ymn=ls@PHB[["Min Y"]], ymx= ls@PHB[["Max Y"]])
-  dt <- alldtms[[paste0(x[2],"@all")]]
+                         ymn=ls@PHB[["Min Y"]], ymx= ls@PHB[["Max Y"]], )
+  dt <- alldtms[[1]]
   dt <- resample(dt, empty_raster, method='bilinear')
   dt_mat <- as.matrix(dt)
   
   
   #normalisation based on the DTM
-  voxtbl <- voxtbl[,1:4][,alt := k+zmin+0.5][, dtm := dt_mat[cbind(nrow(dt_mat)-j, i+1)]]
+  voxtbl <- voxtbl[,c(1,2,3,15)][,alt := k+zmin+0.5][, dtm := dt_mat[cbind(nrow(dt_mat)-j, i+1)]]
   voxtbl <- voxtbl[alt>dtm]
   voxtbl <- voxtbl[, k1:= order(k), by=list(i,j)]
   voxtbl <- voxtbl[, k1:= k1-0.5]
@@ -166,7 +166,7 @@ func_normvox3 <- function(x)
 
 
 
-voxall <- rbindlist(apply(allvoxfiles, 1, func_normvox3))
+voxall <- rbindlist(apply(allvoxfiles, 1, func_normvox2))
 setDT(voxall)
 voxall <- voxall[!meanang %in% c(37.24, 7.16, 49.7, 43.93)]
 pfcvladvox <- voxall[, .(cvladvox=cv(m, na.rm = TRUE), pfsumprof=exp(-0.5*sum(m, na.rm = TRUE))), by=.(id_placette, meanang, pfsumvox)]
