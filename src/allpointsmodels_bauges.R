@@ -6,32 +6,27 @@ library(ggplot2)
 library(ggthemes)
 library(gstat)
 library(caret)
-
-typefor <- " "
-typepc <- "allpoints"
-# l1 <- ifelse(typefor=="conifere","con",
-#              ifelse(typefor=="feuillus","feu","mix"))
-# l2 <- ifelse(typepc=="flightlines","fl","all")
+library(ggrepel)
 
 
 ####IMPORTANT#####
 ##Here, read only NORMALISED POINT CLOUDS with label format "plotid_n.las"
-fd_smry <- fread("D:/1_Work/__R_codes/Projects/scangle_effect_ba/data/bauges_db_new.csv", sep = ",")
+fd_smry <- fread("D:/1_Work/__R_codes/Projects/scangle_effect_ba/data/bauges_db15jul.csv", sep = ",")
 colnames(fd_smry)[2] <- "id_placette"
+height <- 5
 
 
-fd_smry <- fd_smry[, newstratum := ifelse(G175R/G175>0.75 & G175F/G175<0.25 , "Coniferes", 
-                                          ifelse(G175F/G175>0.75 & G175R/G175<0.25, "Feuillus", "Mixte"))]
-fd_smry[, stratum := as.factor(stratum)]
-fd_smry[, newstratum := as.factor(newstratum)]
-fd_smry[, id_placette := as.factor(id_placette)]
+# fd_smry <- fd_smry[, newstratum := ifelse(G175R/G175>0.75 & G175F/G175<0.25 , "Coniferes",
+#                                           ifelse(G175F/G175>0.75 & G175R/G175<0.25, "Feuillus", "Mixte"))]
+
+fd_smry <- fd_smry[, newstratum := ifelse(comp_R_G>75 & comp_F_G<25 , "Coniferes",
+                                          ifelse(comp_F_G>75 & comp_R_G<25, "Feuillus", "Mixte"))]
+
 setkey(fd_smry, "id_placette")
-fd_smry_con <- fd_smry[newstratum=="Coniferes"]
-fd_smry_feu <- fd_smry[newstratum=="Feuillus"]
-fd_smry_mix <- fd_smry[newstratum=="Mixte"]
 
 
-plots <- readLAScatalog("D:/1_Work/5_Bauges/Data/ULM/LAS/norm/plots/15m_rad/may2021/allpoints/")
+
+plots <- readLAScatalog("D:/1_Work/5_Bauges/Data/ULM/LAS/norm/plots/15m_rad/may2021/allpoints_fl/")
 opt_independent_files(plots) <- TRUE ####VERY IMPORTANT WHEN PROCESSING INDIVIDUAL PLOTS
 func_computeall <- function(chunk)
 {
@@ -46,10 +41,10 @@ func_computeall <- function(chunk)
     mang <- round(as.numeric(mang), 2)
     
   }
-  meanch <- func_meanch(las@data$Z, las@data$ReturnNumber)
-  varch <- func_varch(las@data$Z, las@data$ReturnNumber)
-  pflidr <- func_pf(las@data$Z, las@data$ReturnNumber, ht=6)
-  cvladlidr <- func_cvlad(las@data$Z, las@data$ReturnNumber, ht=6)
+  meanch <- func_meanch(las@data$Z, las@data$ReturnNumber, ht=height)
+  varch <- func_varch(las@data$Z, las@data$ReturnNumber, ht=height)
+  pflidr <- func_pf(las@data$Z, las@data$ReturnNumber, ht=height)
+  cvladlidr <- func_cvlad(las@data$Z, las@data$ReturnNumber, ht=height)
   return(list( 
     id_placette = id_plac,
     meanang = mang,
@@ -73,15 +68,16 @@ alldtms <- sapply(allpcs, function(x){
   USE.NAMES = TRUE)
 names(alldtms) <- basename(file_path_sans_ext(names(alldtms)))
 
-allvoxfiles <- as.data.table(list.files(paste0("D:/1_Work/5_Bauges/Voxelisation/Results/74/may2021/voxfiles/allpoints/"), 
+allvoxfiles <- as.data.table(list.files(paste0("D:/1_Work/5_Bauges/Voxelisation/Results/74/may2021/voxfiles/allpoints_fl/"), 
                                         pattern = "*.vox",
                                         full.names = TRUE))
 allvoxfiles[, id_placette := sub("\\@.*","",basename(file_path_sans_ext(V1)))]
 allvoxfiles[, meanang := sub(".*\\@","",basename(file_path_sans_ext(V1)))]
-voxall <- rbindlist(apply(allvoxfiles, 1, func_normvox2, pth ="D:/1_Work/5_Bauges/Data/ULM/LAS/unnorm/plots/15m_rad/may2021/allpoints/", ht=6))
+voxall <- rbindlist(apply(allvoxfiles, 1, func_normvox2, 
+                          pth ="D:/1_Work/5_Bauges/Data/ULM/LAS/unnorm/plots/15m_rad/may2021/allpoints/", 
+                          ht=height))
 setDT(voxall)
-voxall <- voxall[!meanang %in% c(37.24, 7.16, 49.7, 43.93)]
-pfcvladvox <- voxall[, .(cvladvox=cv(m, na.rm = TRUE), pfsumprof=exp(-0.5*sum(m, na.rm = TRUE))), by=.(id_placette, meanang, pfsumvox)]
+pfcvladvox <- voxall[, .(cvladvox=cv(m, na.rm = TRUE), pfsumprof=exp(-0.5*sum(m, na.rm = TRUE))), by=.(id_placette, meanang)]
 setkeyv(pfcvladvox, c("id_placette"))
 setkeyv(plotmetsflall, c("id_placette"))
 plotmetsflall <- plotmetsflall[pfcvladvox]
@@ -93,18 +89,95 @@ func_refmodls <- function(db, form)
               method = "lm",
               trControl = trainControl(method="LOOCV"))
   
-  ypred <- exp(mdl$pred$pred)
-  yobs <- exp(mdl$pred$obs)
-  n <- length(yobs)
-  MPE <- (100/n)*sum((yobs-ypred)/yobs)
+  obs <- mdl$pred$obs
+  pred <- mdl$pred$pred 
+  yobs <- exp(obs)
+  ypred <- exp(pred)
+  see <- sqrt(sum((obs-pred)^2)/(length(obs)-5))
+  cf <- exp((see^2)/2)
+  ypred <- ypred*cf
+  SSE <- sum((yobs-ypred)^2)
+  SST <- sum((mean(yobs)-yobs)^2)
+  R2 <- 1-(SSE/SST)
+  aR2 <- 1-((1-R2)*(length(ypred)-1)/(length(ypred)-4-1))
+  MPE <- (100/length(ypred))*sum((yobs-ypred)/yobs)
   RMSE <- sqrt(mean((yobs-ypred)^2))
-  MAE <- mean(abs(ypred-yobs))
-  R2 <- mdl$results$Rsquared
-  return(list("R2" = R2, 
+  RMSEpc <- RMSE*100/mean(yobs)
+  bias <- (sum(yobs-ypred))/length(yobs)
+  biaspc <- bias*100/mean(yobs)
+  return(list("R2" = aR2, 
               "RMSE" = RMSE,
               "MAE" = MAE,
               "MPE" = MPE))
 }
+
+fd_smry <- fd_smry[id_placette %in% plotmetsflall$id_placette]
+fd_smry1 <- fd_smry[,c("id_placette", "G75", "volume_tige", "volume_total", "newstratum", "stratum",
+                       "G175", "volume_tige_175", "volume_total_175")]
+fd_smry_con <- fd_smry1[newstratum=="Coniferes"]
+fd_smry_feu <- fd_smry1[newstratum=="Feuillus"]
+fd_smry_mix <- fd_smry1[stratum=="Mixte"]
+
+mets.all.all <- fd_smry1[plotmetsflall[id_placette %in% fd_smry1$id_placette]]
+mets.all.con <- fd_smry_con[plotmetsflall[id_placette %in% fd_smry_con$id_placette]]
+mets.all.feu <- fd_smry_feu[plotmetsflall[id_placette %in% fd_smry_feu$id_placette]]
+mets.all.mix <- fd_smry_mix[plotmetsflall[id_placette %in% fd_smry_mix$id_placette]]
+
+
+f1l <- log(G75)~log(meanch)+log(varch)+log(1-pflidr)+log(cvladlidr)
+f1v <- log(G75)~log(meanch)+log(varch)+log(1pfsumprof)+log(cvladvox)
+f2l <- log(volume_total)~log(meanch)+log(varch)+log(pflidr)+log(cvladlidr)
+f2v <- log(volume_total)~log(meanch)+log(varch)+log(pfsumprof)+log(cvladvox)
+f3l <- log(volume_tige)~log(meanch)+log(varch)+log(pflidr)+log(cvladlidr)
+f3v <- log(volume_tige)~log(meanch)+log(varch)+log(pfsumprof)+log(cvladvox)
+
+
+mdl<- train(f1l,
+            data = mets.all.feu,
+            method = "lm",
+            trControl = trainControl(method="LOOCV"))
+summary(mdl)
+
+obs <- mdl$pred$obs
+pred <- mdl$pred$pred
+yobs <- exp(obs)
+ypred <- exp(pred)
+see <- sqrt(sum((obs-pred)^2)/(length(obs)-5))
+cf <- exp((see^2)/2)
+ypred <- ypred*cf
+SSE <- sum((yobs-ypred)^2)
+SST <- sum((mean(yobs)-yobs)^2)
+R2a <- cor(obs, pred)^2
+R2 <- 1-(SSE/SST)
+MPE <- (100/length(ypred))*sum((yobs-ypred)/yobs)
+RMSE <- sqrt(mean((yobs-ypred)^2))
+RMSEpc <- RMSE*100/mean(yobs)
+bias <- (sum(yobs-ypred))/length(yobs)
+biaspc <- bias*100/mean(yobs)
+xx <- as.data.table(cbind(ypred,yobs,pred,obs))
+xx <- cbind(xx, mets.all.con$id_placette)
+
+ggplot(data=xx, aes(x=yobs, y=ypred))+geom_abline()+
+  geom_point()+  geom_label_repel(aes(label=V2), size=2, alpha=0.3)+
+  geom_smooth(method = 'lm', alpha=0.5)+
+  coord_fixed(xlim = c(min(yobs,ypred), 
+                       max(yobs,ypred)), 
+              ylim = c(min(yobs,ypred),
+                       max(yobs,ypred)))+
+  theme_few()+
+  labs(x = "Observed",
+       y = "Predicted")+
+  annotate("text", 
+           x = -Inf, y = Inf, hjust = 0, vjust = 1,
+           label = paste0("R² = ", round(R2, 2), "\n",
+                          "RMSE = ", round(RMSE, 2), "\n",
+                          "RMSE% = ", round(RMSEpc, 2), "\n",
+                          "MPE% = ", round(MPE, 2), "\n",
+                          "Bias = ", round(bias, 2), "\n",
+                          "Bias% = ", round(biaspc, 2)))
+
+
+
 
 
 plotmetsflall_con <- plotmetsflall[which(id_placette %in% fd_smry_con$id_placette)]

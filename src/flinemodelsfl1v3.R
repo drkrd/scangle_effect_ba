@@ -575,7 +575,7 @@ ciron.mdlmets.clc <- melt(rbindlist(lapply(ciron.clc5, function(x)
 })), measure.vars = c("R2", "MPE", "RMSE", "MAE"))
 
 
-ciron.mdlmets.all <- cbind(ciron.mdlmets.all, "exp"=rep("all", nrow(ciron.mdlmets.all)), "id"=rep(rep(1:5000, 1, each=6), 4))
+ciron.mdlmets.all <- cbind(ciron.mdlmets.all, "exp"=rep("all", nrow(ciron.mdlmets.all)), "id"=rep(rep(1:1000, 1, each=6), 4))
 ciron.mdlmets.cla <- cbind(ciron.mdlmets.cla, "exp"=rep("mostly A", nrow(ciron.mdlmets.cla)), "id"=rep(rep(1:5000, 1, each=6), 4))
 ciron.mdlmets.clb <- cbind(ciron.mdlmets.clb, "exp"=rep("mostly B", nrow(ciron.mdlmets.clb)), "id"=rep(rep(1:5000, 1, each=6), 4))
 ciron.mdlmets.clc <- cbind(ciron.mdlmets.clc, "exp"=rep("mostly C", nrow(ciron.mdlmets.clc)), "id"=rep(rep(1:5000, 1, each=6), 4))
@@ -583,9 +583,9 @@ ciron.mdlmets.clc <- cbind(ciron.mdlmets.clc, "exp"=rep("mostly C", nrow(ciron.m
 
 
 
-ciron.mdlmets <- as.data.table(rbind(ciron.mdlmets.all)) , ciron.mdlmets.cla, ciron.mdlmets.clb, ciron.mdlmets.clc))
+ciron.1mdlmets <- as.data.table(rbind(ciron.mdlmets.all)) , ciron.mdlmets.cla, ciron.mdlmets.clb, ciron.mdlmets.clc))
      
-
+ciron.1mdlmets <- as.data.table(cbind(ciron.mdlmets.all, "fl"=rep("fl1", nrow(ciron.mdlmets.all))))
                           
 ggplot(data=ciron.mdlmets[Forest_attr=="Basal area"], aes(y=value, fill=Metrics))+
   geom_boxplot()+

@@ -11,7 +11,7 @@ library(foreach)
 library(doParallel)
 
 plots <- readLAScatalog("D:/1_Work/2_Ciron/Data/ULM/LAS/norm/plots/15m_rad/april2021/flightlines_2/")
-
+height=2
 ####VERY IMPORTANT WHEN PROCESSING INDIVIDUAL PLOTS
 opt_independent_files(plots) <- TRUE 
 func_computeall <- function(chunk)
@@ -218,15 +218,15 @@ pmetsfl2.clac <- pmetsfl2.clac[, wt := wt/sum(wt), id_placette]
 dbase <- pmetsfl2.all
 clus <- makeCluster(detectCores() - 1)
 registerDoParallel(clus, cores = detectCores() - 1)
-smplst.all <- foreach(i = 1:10000, .packages=c("dplyr", "data.table", "caret", "sampling")) %dopar% {
+smplst.2all <- foreach(i = 1:10000, .packages=c("dplyr", "data.table", "caret", "sampling")) %dopar% {
   set.seed(i)
   dbase.sset <- dbase[, .SD[sample(.N, min(1,.N), prob = wt)], by = id_placette]
   return(which(dbase$cvladlidr%in%dbase.sset$cvladlidr & dbase$pflidr%in%dbase.sset$pflidr))
 }
 stopCluster(clus)
 registerDoSEQ()
-smplst.all <- matrix(unlist(smplst.all), nrow = 29)
-smplst.all <- unique(as.data.table(t(smplst.all)))
+smplst.2all <- matrix(unlist(smplst.2all), nrow = 29)
+smplst.2all <- unique(as.data.table(t(smplst.2all)))
 
 
 
@@ -244,7 +244,7 @@ time_log <- data.frame()
 start <- Sys.time()
 dbase <- pmetsfl2.all
 fds <- fd_smry[!id_placette=="14"]
-idx.lst <- smplst.all
+idx.lst <- smplst.2all
 
 f1l <- log(G_m2_ha)~log(meanch)+log(varch)+log(pflidr)+log(cvladlidr)
 f1v <- log(G_m2_ha)~log(meanch)+log(varch)+log(pfsumprof)+log(cvladvox)
@@ -257,9 +257,8 @@ f3v <- log(volume_tige_m3_ha)~log(meanch)+log(varch)+log(pfsumprof)+log(cvladvox
 ##Simulations
 clus <- makeCluster(detectCores() - 1)
 registerDoParallel(clus, cores = detectCores() - 1)
-nme1a <- "ciron"
 n <- 1000
-ciron.2clall <- foreach(i = 1:n, .packages=c("dplyr", "data.table", "caret")) %dopar% {
+ciron.2all <- foreach(i = 1:n, .packages=c("dplyr", "data.table", "caret")) %dopar% {
   idx <- as.vector(unlist(idx.lst[i]))
   mets_for_model <- dbase[idx]
   dbase$id_placette <- as.factor(dbase$id_placette)
@@ -368,6 +367,7 @@ time_log <- rbind(time_log, c(n, (stop-start)))
 
 
 
+
 func_mdlmets <- function(obs, pred, for_attr, mettype)
 {
   yobs <- exp(obs)
@@ -375,16 +375,23 @@ func_mdlmets <- function(obs, pred, for_attr, mettype)
   see <- sqrt(sum((obs-pred)^2)/(length(obs)-4))
   cf <- exp((see^2)/2)
   ypred <- ypred*cf
-  R2 <- cor(ypred, yobs)^2
+  yobs <- exp(obs)
+  ypred <- exp(pred)
+  see <- sqrt(sum((obs-pred)^2)/(length(obs)-5))
+  cf <- exp((see^2)/2)
+  ypred <- ypred*cf
+  SSE <- sum((yobs-ypred)^2)
+  SST <- sum((mean(yobs)-yobs)^2)
+  R2 <- 1-(SSE/SST)
   aR2 <- 1-((1-R2)*(length(ypred)-1)/(length(ypred)-4-1))
   MPE <- (100/length(ypred))*sum((yobs-ypred)/yobs)
   RMSE <- sqrt(mean((yobs-ypred)^2))
-  MAE <- mean(abs(ypred-yobs))
-  return(list( "Forest_attr"=for_attr, "Metrics"=mettype, "R2"=aR2, "MPE"=MPE, "RMSE"=RMSE,"MAE"=MAE))
+  RMSEpc <- RMSE*100/mean(yobs)
+  return(list( "Forest_attr"=for_attr, "Metrics"=mettype, "R2"=R2, "MPE"=MPE, "RMSE"=RMSE,"RMSEpc"=RMSEpc))
 }
 
 
-ciron.mdlmets.all2 <- melt(rbindlist(lapply(ciron.2all, function(x)
+ciron.mdlmets.2all <- melt(rbindlist(lapply(ciron.2all, function(x)
 {
   G.l.mdlmets <- func_mdlmets(x$G.lidr.obs, x$G.lidr.pred, "Basal area", "old")
   G.v.mdlmets <- func_mdlmets(x$G.vox.obs, x$G.vox.pred, "Basal area", "vox")
@@ -400,7 +407,7 @@ ciron.mdlmets.all2 <- melt(rbindlist(lapply(ciron.2all, function(x)
             vtig.v.mdlmets)
   metdf <- rbindlist(y)
   return(metdf)
-})), measure.vars = c("R2", "MPE", "RMSE", "MAE"))
+})), measure.vars = c("R2", "MPE", "RMSE", "RMSEpc"))
 
 ciron.mdlmets.all1 <- melt(rbindlist(lapply(ciron.all5, function(x)
 {
@@ -473,7 +480,7 @@ ciron.mdlmets.clc <- melt(rbindlist(lapply(ciron.clc, function(x)
 })), measure.vars = c("R2", "MPE", "RMSE", "MAE"))
 
 # 
-ciron.mdlmets.all <- cbind(ciron.mdlmets.all2, "exp"=rep("2all", nrow(ciron.mdlmets.all)), "id"=rep(rep(1:5000, 1, each=6), 4))
+ciron.mdlmets.all <- cbind(ciron.mdlmets.2all, "exp"=rep("2all", nrow(ciron.mdlmets.2all)), "id"=rep(rep(1:1000, 1, each=6), 4))
 ciron.mdlmets.all1 <- cbind(ciron.mdlmets.all1, "exp"=rep("all", nrow(ciron.mdlmets.all)), "id"=rep(rep(1:5000, 1, each=6), 4))
 
 ciron.mdlmets.cla <- cbind(ciron.mdlmets.cla, "exp"=rep("mostly A", nrow(ciron.mdlmets.cla)), "id"=rep(rep(1:5000, 1, each=6), 4))
@@ -485,12 +492,13 @@ ciron.mdlmets.clc <- cbind(ciron.mdlmets.clc, "exp"=rep("mostly C", nrow(ciron.m
 # 
 ciron.mdlmets <- as.data.table(rbind(ciron.mdlmets.all, ciron.mdlmets.cla, ciron.mdlmets.clb, ciron.mdlmets.clc))
 
-ciron.mdlmets <- as.data.table(rbind(ciron.mdlmets.all, ciron.mdlmets.all1)) , ciron.mdlmets.clb, ciron.mdlmets.clc))
+ciron.2mdlmets <- as.data.table(cbind(ciron.mdlmets.all, "fl"=rep("fl2", nrow(ciron.mdlmets.all)))) 
 
+ciron.mets <- rbind(ciron.1mdlmets, ciron.2mdlmets)
 
-ggplot(data=ciron.mdlmets[Forest_attr=="Total volume"], aes(y=value, colour=Metrics))+
-  geom_freqpoly()+
-  facet_grid(variable~exp, scales = "free")+
+ggplot(data=ciron.mets[Forest_attr=="Total volume"], aes(y=value, colour=Metrics))+
+  geom_boxplot()+
+  facet_grid(variable~fl, scales = "free")+
   theme_base()+
   scale_fill_grey()
 

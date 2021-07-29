@@ -46,7 +46,6 @@ myProfilesLAD = function(Z, Zmax, dZ, th)
   #return the result of the function
   return(list_lad)
 }
-
 ## All following functions compute the values from a dataframe of the las data containing Z and return number only
 func_meanch <- function(z, rn, ht)
 {
@@ -109,6 +108,30 @@ func_cvlad <- function(z, rn, ht)
   }
 }
 
+func_sdvfp <- function(z, rn, ht)
+{
+  aoi <- as.data.frame(cbind(z, rn))
+  if (is.null(aoi)) 
+  {
+    return(NULL)
+  } 
+  else
+  {
+    v <- NULL
+    zm = min(ceiling(max(aoi$z)), 60)
+    val = list(myProfilesLAD(aoi$z, zm, dZ = 1, ht))
+    val <- t(rbindlist(val))
+    val <- as.data.frame(cbind(rownames(val), val))
+    setDT(val)
+    colnames(val) <- c("k1", "PADmean")
+    val$PADmean <- as.numeric(val$PADmean)
+    val$k1 <- as.numeric(val$k1)
+    val <- val[, .(sdvfp=sqrt(sum(PADmean*(k1-(sum(k1*PADmean)/sum(PADmean)))^2)/(sum(PADmean)*(length(PADmean[which(PADmean!=0)])-1)/length(PADmean[which(PADmean!=0)]))))]
+
+    return(unlist(val$sdvfp))
+  }
+}
+
 func_cvladprof <- function(z, rn, ht)
 {
   aoi <- as.data.frame(cbind(z, rn))
@@ -149,9 +172,10 @@ func_areacalc = function(dfr)
 func_normvox2 <- function(x, pth, ht)
 {
   x <- as.vector(unlist(x))
-  txt <- readLines(x[1], n=3)[2:3]
-  zmin <- as.numeric(unlist(strsplit(txt[[1]], "\\s+"))[4])
-  voxtbl <- fread(x[1], na.strings = "NA" , skip = 5)
+  txt <- readLines(x[1], n=8)
+  mincorner <- txt[pmatch("#min_corner", txt)]
+  zmin <- as.numeric(str_extract_all(mincorner, "(\\d+\\.\\d+)")[[1]][3])
+  voxtbl <- fread(x[1], na.strings = "NA" , skip = "i j k")
   
   
   
@@ -168,7 +192,7 @@ func_normvox2 <- function(x, pth, ht)
   
   
   #normalisation based on the DTM
-  voxtbl <- voxtbl[,1:4][,alt := k+zmin+0.5][, dtm := dt_mat[cbind(nrow(dt_mat)-j, i+1)]]
+  voxtbl <- voxtbl[,c("i","j","k","PadBVTotal")][, alt := k+zmin+0.5][, dtm := dt_mat[cbind(nrow(dt_mat)-j, i+1)]]
   voxtbl <- voxtbl[alt>dtm]
   voxtbl <- voxtbl[, k1:= order(k), by=list(i,j)]
   voxtbl <- voxtbl[, k1:= k1-0.5]
@@ -178,7 +202,7 @@ func_normvox2 <- function(x, pth, ht)
   # pf <- exp(-0.5*ttl)
   # voxtbl <- voxtbl[, n:=length(PadBVTotal[!is.na(PadBVTotal)]), by=list(k1)]
   # voxtbl <- voxtbl[n>30]
-  voxtbl <- voxtbl[, .(m=mean(PadBVTotal, na.rm = TRUE), 
+  voxtbl <- voxtbl[, .(PADmean=mean(PadBVTotal, na.rm = TRUE), 
                        # var=var(PadBVTotal, na.rm = TRUE),
                        # lci=t.test(PadBVTotal, na.rm = TRUE)$conf.int[1],
                        # uci=t.test(PadBVTotal, na.rm = TRUE)$conf.int[2],
@@ -190,7 +214,7 @@ func_normvox2 <- function(x, pth, ht)
   # 
   voxtbl <- voxtbl[, c("id_placette","meanang") := .(sub("\\_un.*", "", x[2]), x[3]),]
   # voxtbl <- voxtbl[, pfsumvox:=pf,]
-  voxtbl <- voxtbl[1:max(which(m!=0))]
+  voxtbl <- voxtbl[1:max(which(PADmean!=0))]
   # voxtbl <- voxtbl[k1>ht]
   
   return(voxtbl)
