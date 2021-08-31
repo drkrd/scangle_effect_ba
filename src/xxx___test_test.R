@@ -68,8 +68,8 @@ ggplot(data = xyz, aes(y=val, x=v1, fill=v1))+geom_boxplot()+facet_wrap(~v2, sca
 
 
 
-s1 <- test1[which(value==median(value))]
-s2 <- test2[which(value==median(value))]
+s1 <- test1[which(value==max(value))]
+s2 <- test2[which(value==min(value))]
 idx1 <- as.vector(unlist(smplst.clc[s1$id]))
 idx2 <- as.vector(unlist(smplst.clc[s2$id]))
 dbase <- pmetsfl1.clc
@@ -95,10 +95,10 @@ setkey(mets_for_model2, "id_placette")
 
 
 mets_12 <- mets_for_model1[mets_for_model2]
-ggplot(data=mets_12, aes(x=log(pfsumprof), y=log(i.pfsumprof)))+
+x <- ggplot(data=mets_12, aes(x=log(pfsumprof), y=log(i.pfsumprof)))+
   geom_point()+
-  geom_text(aes(label=id_placette), position = position_nudge(y = -0.05))
-
+  geom_text(aes(label=paste0(meanang, " ", id_placette," ", i.meanang)), position = position_nudge(y = -0.05))
+print(x)
 
 obs <- m2v$pred$obs
 pred <- m2v$pred$pred

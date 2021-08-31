@@ -8,10 +8,6 @@ library(gstat)
 library(caret)
 library(stringr)
 
-for(name in names(alldtms))
-{
-  writeRaster(alldtms[[name]], paste0("D:/1_Work/2_Ciron/Data/ULM/rasters/dtms/", name, ".asc"))
-}
 
 
 ####IMPORTANT#####
@@ -20,6 +16,8 @@ fd_smry <- fread("D:/1_Work/2_Ciron/Data/var_dendro_ciron.csv", sep = ",", drop 
 colnames(fd_smry)[1] <- "id_placette"
 fd_smry$id_placette <- as.character(fd_smry$id_placette)
 setkey(fd_smry, "id_placette")
+
+
 height <- 5
 
 plots <- readLAScatalog("D:/1_Work/2_Ciron/Data/ULM/LAS/norm/plots/15m_rad/april2021/allpoints/")
@@ -69,7 +67,7 @@ alldtms <- sapply(allpcs, function(x){
 names(alldtms) <- basename(file_path_sans_ext(names(alldtms)))
 
 pmetsflall <- plotmetsflall
-allvoxfiles <- as.data.table(list.files(paste0("D:/1_Work/2_Ciron/voxelisation/Results/May/wo_interpolation/voxfiles/allpoints_fl/"), 
+allvoxfiles <- as.data.table(list.files(paste0("D:/1_Work/2_Ciron/voxelisation/Results/May/wo_interpolation/voxfiles/allpoints/"), 
                                         pattern = "*.vox",
                                         full.names = TRUE))
 
@@ -83,10 +81,10 @@ setDT(voxall)
 pfcvladvox <- voxall[, .(cvladvox=cv(PADmean, na.rm = TRUE), 
                          sdvfp=sqrt(sum(PADmean*(k1-(sum(k1*PADmean)/sum(PADmean)))^2)/(sum(PADmean)*(length(PADmean[which(PADmean!=0)])-1)/length(PADmean[which(PADmean!=0)]))),
                          pfsumprof=exp(-0.5*sum(PADmean, na.rm = TRUE))), by=.(id_placette, meanang)]
-setkeyv(pfcvladvox, c("id_placette"))
-setkeyv(pmetsflall, c("id_placette"))
+setkeyv(pfcvladvox, "id_placette")
+setkey(pmetsflall, "id_placette")
 pmetsflall <- pmetsflall[pfcvladvox]
-mets_all <- fd_smry[pmetsflall]
+mets_all2 <- ciron_db[pmetsflall]
 ##############################################################################################################
 func_refmodls <- function(db, form)
 {
@@ -119,24 +117,38 @@ func_refmodls <- function(db, form)
 
 refmdls <- list()
 
-form.logl <- log(G_m2_ha)~log(meanch)+log(varch)+log(pflidr)+log(cvladlidr)
-form.logl1 <- log(G_m2_ha)~log(meanch)+log(varch)+log(pflidr)+log(sdvfplidr)
-
-form.logv <- log(G_m2_ha)~log(meanch)+log(varch)+log(pfsumprof)+log(cvladvox)
-form.logv1 <- log(G_m2_ha)~log(meanch)+log(varch)+log(pfsumprof)+log(sdvfp)
+colnames(mets_all)[4] <- "vtige_m3_ha"
 
 
+form.gl <- log(g_m2_ha)~log(meanch)+log(varch)+log(pflidr)+log(cvladlidr)
+form.gv <- log(g_m2_ha)~log(meanch)+log(varch)+log(pfsumprof)+log(cvladvox)
+form.vtotl <- log(vtot_m3_ha)~log(meanch)+log(varch)+log(pflidr)+log(cvladlidr)
+form.vtotv <- log(vtot_m3_ha)~log(meanch)+log(varch)+log(pfsumprof)+log(cvladvox)
+form.vtigl <- log(vtige_m3_ha)~log(meanch)+log(varch)+log(pflidr)+log(cvladlidr)
+form.vtigv <- log(vtige_m3_ha)~log(meanch)+log(varch)+log(pfsumprof)+log(cvladvox)
 
-mets_allx <- mets_all[-6]
-mdl<- train(form.logv1,
-            data = mets_allx,
+
+# fit <- NULL
+# for(row in 1:nrow(mets_all))
+# {
+#   train <- mets_all[-row]
+#   model <- lm(data=train, formula = form.logv)
+#   val <- mets_all[row]
+#   fit[row] <- predict(model, val)
+# }
+# obs <- log(mets_all$)
+
+
+mdl<- train(form.gl,
+            data = mets_all2[-c(6,7)],
             method = "lm",
             trControl = trainControl(method="LOOCV"))
 
-pred <- predict(mdl, mets_allx)
-obs <- log(mets_allx$G_m2_ha)
+obs <- mdl$pred$obs
+pred <- mdl$pred$pred
 yobs <- exp(obs)
 ypred <- exp(pred)
+
 #correction for back-transformation
 see <- sqrt(sum((obs-pred)^2)/(length(obs)-5))
 cf <- exp((see^2)/2)
@@ -145,10 +157,11 @@ SSE <- sum((yobs-ypred)^2)
 SST <- sum((mean(yobs)-yobs)^2)
 R2 <- 1-(SSE/SST)
 1-((1-R2)*(length(ypred)-1)/(length(ypred)-4-1))
-(100/length(ypred))*sum((yobs-ypred)/yobs)
+sum((yobs-ypred)/yobs)*(100/length(ypred))
 sqrt(mean((yobs-ypred)^2))
 (sum(yobs-ypred))/length(yobs)
-bias*100/mean(yobs)
+((sum(yobs-ypred))/length(yobs))*100/mean(yobs)
+
 
 
 

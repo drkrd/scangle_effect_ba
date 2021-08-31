@@ -3,6 +3,21 @@ library(dplyr)
 library(conflicted)
 mets <- list()
 
+
+#read placette centre coordinates
+ciron_coords <- setDT(read_xlsx("D:/1_Work/2_Ciron/Data/Field/Mesures_placette_Frisbee_all_plots_aout_2021.xlsx", 
+                         sheet = "Info_Plots"))
+
+#read las catalog 
+ciron_lascat_norm <- readLAScatalog("D:/1_Work/2_Ciron/Data/ULM/LAS/norm/")
+
+# clip plots
+ciron_plots <- clip_circle(ciron_lascat_norm, 
+                           ciron_coords$x_centre_plac, 
+                           ciron_coords$y_centre_plac,
+                           radius =  15)
+
+
 #calculation of area covered pc
 #lidr has a simpler option to measure area if the input data is available as a las object using area()
 area_calc = function(dfr)
@@ -18,9 +33,9 @@ area_calc = function(dfr)
 }
 
 #aois is a named list of point cloud
-for(name in names(aois))
+for(name in names(ciron_plots))
 {
-  aoi <- lasflightline(aois[[name]])
+  aoi <- lasflightline(ciron_plots[[name]])
   flist <- unique(aoi@data$flightlineID)
   meangle_fl <- data.frame()
   

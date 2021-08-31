@@ -26,7 +26,7 @@ setkey(fd_smry, "id_placette")
 
 
 
-plots <- readLAScatalog("D:/1_Work/5_Bauges/Data/ULM/LAS/norm/plots/15m_rad/may2021/allpoints_fl/")
+plots <- readLAScatalog("D:/1_Work/5_Bauges/Data/ULM/LAS/norm/plots/15m_rad/may2021/allpoints/")
 opt_independent_files(plots) <- TRUE ####VERY IMPORTANT WHEN PROCESSING INDIVIDUAL PLOTS
 func_computeall <- function(chunk)
 {
@@ -45,13 +45,16 @@ func_computeall <- function(chunk)
   varch <- func_varch(las@data$Z, las@data$ReturnNumber, ht=height)
   pflidr <- func_pf(las@data$Z, las@data$ReturnNumber, ht=height)
   cvladlidr <- func_cvlad(las@data$Z, las@data$ReturnNumber, ht=height)
+  sdvfplidr <- func_sdvfp(las@data$Z, las@data$ReturnNumber, ht=height)
+  
   return(list( 
     id_placette = id_plac,
     meanang = mang,
     meanch = meanch,
     varch = varch,
     pflidr = pflidr,
-    cvladlidr = cvladlidr))
+    cvladlidr = cvladlidr,
+    sdvfplidr = sdvfplidr))
 }
 plotmetsall_orig <- catalog_apply(plots, func_computeall)
 plotmetsflall <- rbindlist(plotmetsall_orig)
@@ -68,7 +71,7 @@ alldtms <- sapply(allpcs, function(x){
   USE.NAMES = TRUE)
 names(alldtms) <- basename(file_path_sans_ext(names(alldtms)))
 
-allvoxfiles <- as.data.table(list.files(paste0("D:/1_Work/5_Bauges/Voxelisation/Results/74/may2021/voxfiles/allpoints_fl/"), 
+allvoxfiles <- as.data.table(list.files(paste0("D:/1_Work/5_Bauges/Voxelisation/Results/74/may2021/voxfiles/allpoints/"), 
                                         pattern = "*.vox",
                                         full.names = TRUE))
 allvoxfiles[, id_placette := sub("\\@.*","",basename(file_path_sans_ext(V1)))]
@@ -77,7 +80,9 @@ voxall <- rbindlist(apply(allvoxfiles, 1, func_normvox2,
                           pth ="D:/1_Work/5_Bauges/Data/ULM/LAS/unnorm/plots/15m_rad/may2021/allpoints/", 
                           ht=height))
 setDT(voxall)
-pfcvladvox <- voxall[, .(cvladvox=cv(m, na.rm = TRUE), pfsumprof=exp(-0.5*sum(m, na.rm = TRUE))), by=.(id_placette, meanang)]
+pfcvladvox <- voxall[, .(cvladvox=cv(PADmean, na.rm = TRUE), 
+                         sdvfp=sqrt(sum(PADmean*(k1-(sum(k1*PADmean)/sum(PADmean)))^2)/(sum(PADmean)*(length(PADmean[which(PADmean!=0)])-1)/length(PADmean[which(PADmean!=0)]))),
+                         pfsumprof=exp(-0.5*sum(PADmean, na.rm = TRUE))), by=.(id_placette, meanang)]
 setkeyv(pfcvladvox, c("id_placette"))
 setkeyv(plotmetsflall, c("id_placette"))
 plotmetsflall <- plotmetsflall[pfcvladvox]
@@ -124,16 +129,22 @@ mets.all.feu <- fd_smry_feu[plotmetsflall[id_placette %in% fd_smry_feu$id_placet
 mets.all.mix <- fd_smry_mix[plotmetsflall[id_placette %in% fd_smry_mix$id_placette]]
 
 
-f1l <- log(G75)~log(meanch)+log(varch)+log(1-pflidr)+log(cvladlidr)
-f1v <- log(G75)~log(meanch)+log(varch)+log(1pfsumprof)+log(cvladvox)
-f2l <- log(volume_total)~log(meanch)+log(varch)+log(pflidr)+log(cvladlidr)
-f2v <- log(volume_total)~log(meanch)+log(varch)+log(pfsumprof)+log(cvladvox)
+f1l1 <- log(G75)~log(meanch)+log(varch)+log(pflidr)+log(cvladlidr)
+f1l2 <- log(G75)~log(meanch)+log(varch)+log(pflidr)+log(sdvfplidr)
+
+f1a <- (G75)~(meanch)+(varch)+(pflidr)+(cvladlidr)
+f2a <- (G75)~(meanch)+(varch)+(pflidr)+(sdvfplidr)
+
+
+f1v <- log(G75)~log(meanch)+log(varch)+log(pfsumprof)+log(sdvfp)
+f2l <- log(volume_total)~log(meanch)+log(varch)+log(pflidr)+log(sdvfplidr)
+f2v <- log(volume_total)~log(meanch)+log(varch)+log(pfsumprof)+log(sdvfp)
 f3l <- log(volume_tige)~log(meanch)+log(varch)+log(pflidr)+log(cvladlidr)
 f3v <- log(volume_tige)~log(meanch)+log(varch)+log(pfsumprof)+log(cvladvox)
 
 
-mdl<- train(f1l,
-            data = mets.all.feu,
+mdl<- train(f3v,
+            data = mets.all.mix,
             method = "lm",
             trControl = trainControl(method="LOOCV"))
 summary(mdl)
@@ -147,10 +158,32 @@ cf <- exp((see^2)/2)
 ypred <- ypred*cf
 SSE <- sum((yobs-ypred)^2)
 SST <- sum((mean(yobs)-yobs)^2)
-R2a <- cor(obs, pred)^2
 R2 <- 1-(SSE/SST)
-MPE <- (100/length(ypred))*sum((yobs-ypred)/yobs)
-RMSE <- sqrt(mean((yobs-ypred)^2))
+1-((1-R2)*(length(ypred)-1)/(length(ypred)-4-1))
+(100/length(ypred))*sum((yobs-ypred)/yobs)
+sqrt(mean((yobs-ypred)^2))
+(sum(yobs-ypred))/length(yobs)
+
+
+
+xy <- data.table(id=mets.all.all[!id_placette=="171_IRSTEA"]$id_placette, pred, obs, ypred, yobs)
+xy <- xy[!id%in%c("268_74_ONF", "259_74_ONF")]
+yobs <- exp(xy$obs)
+ypred <- exp(xy$pred)
+see <- sqrt(sum((obs-pred)^2)/(length(obs)-5))
+cf <- exp((see^2)/2)
+ypred <- ypred*cf
+SSE <- sum((yobs-ypred)^2)
+SST <- sum((mean(yobs)-yobs)^2)
+R2 <- 1-(SSE/SST)
+1-((1-R2)*(length(ypred)-1)/(length(ypred)-4-1))
+(100/length(ypred))*sum((yobs-ypred)/yobs)
+sqrt(mean((yobs-ypred)^2))
+(sum(yobs-ypred))/length(yobs)
+
+
+
+
 RMSEpc <- RMSE*100/mean(yobs)
 bias <- (sum(yobs-ypred))/length(yobs)
 biaspc <- bias*100/mean(yobs)

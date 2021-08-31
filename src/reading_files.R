@@ -5,7 +5,7 @@ library(data.table)
 
 
 
-fd <- readxl::read_xlsx("D:/1_Work/Dropbox/3_R_codes/Projects/scangle_effect_ba/data/Mesures_placette_Frisbee_all_plots_sansmort.xlsx",
+fd <- readxl::read_xlsx("D:/1_Work/__R_codes/Projects/scangle_effect_ba/data/Mesures_placette_Frisbee_all_plots_sansmort.xlsx",
                         sheet = "Arbres")# The original file does not include dead trees. They were deleted before-hand
 
 # fd <- as.data.frame(fd)
@@ -29,6 +29,8 @@ fd_ba_smry <- fd[,ba_sqm := pi*(cbh_in_cm/(pi*200))^2,][
       ,.(ba=sum(ba_sqm, na.rm = TRUE)), keyby = .(id_placette, cx, cy)][
         ,sum_ba_hec:=(10000*ba)/706.8583,]
 
+fd_ba_smry <- cbind(fd_ba_smry, seq(1:30))
+
 
 
 
@@ -38,6 +40,15 @@ plot_loc <- fd_ba_smry[,.(id_placette,cx,cy),]
 
 ##read las data into a catalog
 lasc <- readLAScatalog("D:/1_Work/2_Ciron/Data/ULM/LAS/norm/")
+lasc1 <- readLAS("D:/1_Work/2_Ciron/Data/ULM/LAS/unnorm/plots/15m_rad_test/may2021/allpoints/14_un@all.las")
+
+
+lasc1 <- clip_circle(lasc1, 
+            xcenter = fd_ba_smry$cx[14], 
+            ycenter = fd_ba_smry$cy[14], 
+            radius = 9)
+
+writeLAS(lasc ,paste0("D:/1_Work/2_Ciron/Data/ULM/LAS/unnorm/plots/15m_rad_test/may2021/allpoints/", "14_n@all.las")) 
 
 ##clipping plots based on plot centre coordinates
 aois<- list()
