@@ -219,18 +219,18 @@ pmetsfl2.clac <- pmetsfl2.clac[, wt := wt/sum(wt), id_placette]
 ###########################################################################################################
 ##Generate samples######
 ########################
-dbase <- pmetsfl2.all
+dbase <- pmetsfl2.clbc
 clus <- makeCluster(detectCores() - 1)
 registerDoParallel(clus, cores = detectCores() - 1)
-smplstfl2.all <- foreach(i = 1:6500, .packages=c("dplyr", "data.table", "caret", "sampling")) %dopar% {
+smplstfl2.clbc <- foreach(i = 1:6500, .packages=c("dplyr", "data.table", "caret", "sampling")) %dopar% {
   set.seed(i)
   dbase.sset <- dbase[, .SD[sample(.N, min(1,.N), prob = wt)], by = id_placette]
   return(which(dbase$cvladlidr%in%dbase.sset$cvladlidr & dbase$pflidr%in%dbase.sset$pflidr))
 }
 stopCluster(clus)
 registerDoSEQ()
-smplstfl2.all <- matrix(unlist(smplstfl2.all), nrow = 29)
-smplstfl2.all <- unique(as.data.table(t(smplstfl2.all)))
+smplstfl2.clbc <- matrix(unlist(smplstfl2.clbc), nrow = 29)
+smplstfl2.clbc <- unique(as.data.table(t(smplstfl2.clbc)))
 
 
 
@@ -248,9 +248,9 @@ fd_smry <- fd_smry[!id_placetten%in%c(14,144)]
 time_log <- data.frame()
 
 start <- Sys.time()
-dbase <- pmetsfl2.all
+dbase <- pmetsfl2.clbc
 fds <- fd_smry[!id_placetten%in%c(14,144)]
-idx.lst <- smplst.all
+idx.lst <- smplst.clbc
 
 f1l <- log(g_m2_ha)~log(meanch)+log(varch)+log(pflidr)+log(cvladlidr)
 f1v <- log(g_m2_ha)~log(meanch)+log(varch)+log(pfsumprof)+log(cvladvox)
@@ -367,6 +367,8 @@ cironfl2.clbc <- foreach(i = 1:n, .packages=c("dplyr", "data.table", "caret")) %
   ))
   return(x)
 }
+
+
 cironfl2.ref <- foreach(i = 1:n, .packages=c("dplyr", "data.table", "caret")) %dopar% {
   idx <- as.vector(unlist(idx.lst[i]))
   mets_for_model <- dbase[idx]
@@ -471,13 +473,13 @@ func_mdlmets <- function(obs, pred, for_attr, mettype)
 
 
 
-ciron.mdlmets.fl2all <- melt(rbindlist(lapply(cironfl2.all, function(x)
+cironfl2.mdlmets.all <- melt(rbindlist(lapply(cironfl2.all, function(x)
 {
-  G.l.mdlmets <- func_mdlmets(x$G.lidr.obs, x$G.lidr.pred, "Basal area", "old")
+  G.l.mdlmets <- func_mdlmets(x$G.lidr.obs, x$G.lidr.pred, "Basal area", "ref")
   G.v.mdlmets <- func_mdlmets(x$G.vox.obs, x$G.vox.pred, "Basal area", "vox")
-  vtot.l.mdlmets <- func_mdlmets(x$vtot.lidr.obs, x$vtot.lidr.pred, "Total volume", "old")
+  vtot.l.mdlmets <- func_mdlmets(x$vtot.lidr.obs, x$vtot.lidr.pred, "Total volume", "ref")
   vtot.v.mdlmets <- func_mdlmets(x$vtot.vox.obs, x$vtot.vox.pred, "Total volume", "vox")
-  vtig.l.mdlmets <- func_mdlmets(x$vtig.lidr.obs, x$vtig.lidr.pred, "Stem volume", "old")
+  vtig.l.mdlmets <- func_mdlmets(x$vtig.lidr.obs, x$vtig.lidr.pred, "Stem volume", "ref")
   vtig.v.mdlmets <- func_mdlmets(x$vtig.vox.obs, x$vtig.vox.pred, "Stem volume", "vox")
   y <- list(G.l.mdlmets,
             G.v.mdlmets,
@@ -487,15 +489,14 @@ ciron.mdlmets.fl2all <- melt(rbindlist(lapply(cironfl2.all, function(x)
             vtig.v.mdlmets)
   metdf <- rbindlist(y)
   return(metdf)
-})), measure.vars = c("R2", "MPE", "RMSE", "RMSEpc"))
-
-ciron.mdlmets.fl2clab <- melt(rbindlist(lapply(cironfl2.clab, function(x)
+})), measure.vars = c("R2", "RMSE", "rRMSE", "MPE"))
+cironfl2.mdlmets.clab <- melt(rbindlist(lapply(cironfl2.clab, function(x)
 {
-  G.l.mdlmets <- func_mdlmets(x$G.lidr.obs, x$G.lidr.pred, "Basal area", "old")
+  G.l.mdlmets <- func_mdlmets(x$G.lidr.obs, x$G.lidr.pred, "Basal area", "ref")
   G.v.mdlmets <- func_mdlmets(x$G.vox.obs, x$G.vox.pred, "Basal area", "vox")
-  vtot.l.mdlmets <- func_mdlmets(x$vtot.lidr.obs, x$vtot.lidr.pred, "Total volume", "old")
+  vtot.l.mdlmets <- func_mdlmets(x$vtot.lidr.obs, x$vtot.lidr.pred, "Total volume", "ref")
   vtot.v.mdlmets <- func_mdlmets(x$vtot.vox.obs, x$vtot.vox.pred, "Total volume", "vox")
-  vtig.l.mdlmets <- func_mdlmets(x$vtig.lidr.obs, x$vtig.lidr.pred, "Stem volume", "old")
+  vtig.l.mdlmets <- func_mdlmets(x$vtig.lidr.obs, x$vtig.lidr.pred, "Stem volume", "ref")
   vtig.v.mdlmets <- func_mdlmets(x$vtig.vox.obs, x$vtig.vox.pred, "Stem volume", "vox")
   y <- list(G.l.mdlmets,
             G.v.mdlmets,
@@ -505,15 +506,14 @@ ciron.mdlmets.fl2clab <- melt(rbindlist(lapply(cironfl2.clab, function(x)
             vtig.v.mdlmets)
   metdf <- rbindlist(y)
   return(metdf)
-})), measure.vars = c("R2", "MPE", "RMSE", "RMSEpc"))
-
-ciron.mdlmets.fl2clac <- melt(rbindlist(lapply(cironfl2.clac, function(x)
+})), measure.vars = c("R2", "RMSE", "rRMSE", "MPE"))
+cironfl2.mdlmets.clac <- melt(rbindlist(lapply(cironfl2.clac, function(x)
 {
-  G.l.mdlmets <- func_mdlmets(x$G.lidr.obs, x$G.lidr.pred, "Basal area", "old")
+  G.l.mdlmets <- func_mdlmets(x$G.lidr.obs, x$G.lidr.pred, "Basal area", "ref")
   G.v.mdlmets <- func_mdlmets(x$G.vox.obs, x$G.vox.pred, "Basal area", "vox")
-  vtot.l.mdlmets <- func_mdlmets(x$vtot.lidr.obs, x$vtot.lidr.pred, "Total volume", "old")
+  vtot.l.mdlmets <- func_mdlmets(x$vtot.lidr.obs, x$vtot.lidr.pred, "Total volume", "ref")
   vtot.v.mdlmets <- func_mdlmets(x$vtot.vox.obs, x$vtot.vox.pred, "Total volume", "vox")
-  vtig.l.mdlmets <- func_mdlmets(x$vtig.lidr.obs, x$vtig.lidr.pred, "Stem volume", "old")
+  vtig.l.mdlmets <- func_mdlmets(x$vtig.lidr.obs, x$vtig.lidr.pred, "Stem volume", "ref")
   vtig.v.mdlmets <- func_mdlmets(x$vtig.vox.obs, x$vtig.vox.pred, "Stem volume", "vox")
   y <- list(G.l.mdlmets,
             G.v.mdlmets,
@@ -523,15 +523,14 @@ ciron.mdlmets.fl2clac <- melt(rbindlist(lapply(cironfl2.clac, function(x)
             vtig.v.mdlmets)
   metdf <- rbindlist(y)
   return(metdf)
-})), measure.vars = c("R2", "MPE", "RMSE", "RMSEpc"))
-
-ciron.mdlmets.fl2clbc <- melt(rbindlist(lapply(cironfl2.clbc, function(x)
+})), measure.vars = c("R2", "RMSE", "rRMSE", "MPE"))
+cironfl2.mdlmets.clbc <- melt(rbindlist(lapply(cironfl2.clbc, function(x)
 {
-  G.l.mdlmets <- func_mdlmets(x$G.lidr.obs, x$G.lidr.pred, "Basal area", "old")
+  G.l.mdlmets <- func_mdlmets(x$G.lidr.obs, x$G.lidr.pred, "Basal area", "ref")
   G.v.mdlmets <- func_mdlmets(x$G.vox.obs, x$G.vox.pred, "Basal area", "vox")
-  vtot.l.mdlmets <- func_mdlmets(x$vtot.lidr.obs, x$vtot.lidr.pred, "Total volume", "old")
+  vtot.l.mdlmets <- func_mdlmets(x$vtot.lidr.obs, x$vtot.lidr.pred, "Total volume", "ref")
   vtot.v.mdlmets <- func_mdlmets(x$vtot.vox.obs, x$vtot.vox.pred, "Total volume", "vox")
-  vtig.l.mdlmets <- func_mdlmets(x$vtig.lidr.obs, x$vtig.lidr.pred, "Stem volume", "old")
+  vtig.l.mdlmets <- func_mdlmets(x$vtig.lidr.obs, x$vtig.lidr.pred, "Stem volume", "ref")
   vtig.v.mdlmets <- func_mdlmets(x$vtig.vox.obs, x$vtig.vox.pred, "Stem volume", "vox")
   y <- list(G.l.mdlmets,
             G.v.mdlmets,
@@ -539,39 +538,33 @@ ciron.mdlmets.fl2clbc <- melt(rbindlist(lapply(cironfl2.clbc, function(x)
             vtot.v.mdlmets,
             vtig.l.mdlmets,
             vtig.v.mdlmets)
-  metdf <- rbindlist(y)
-  return(metdf)
-})), measure.vars = c("R2", "MPE", "RMSE", "RMSEpc"))
-
-
-ciron.mdlmetsfl2.ref <- melt(rbindlist(lapply(cironfl2.ref, function(x)
-{
-  m1.mdlmets <- func_mdlmets(x$m1.obs, x$m1.pred, "m1", "old")
-  m2.mdlmets <- func_mdlmets(x$m2.obs, x$m2.pred, "m2", "old")
-  m3.mdlmets <- func_mdlmets(x$m3.obs, x$m3.pred, "m3", "old")
-  m4.mdlmets <- func_mdlmets(x$m4.obs, x$m4.pred, "m4", "old")
-  
-  y <- list(m1.mdlmets,
-            m2.mdlmets,
-            m3.mdlmets,
-            m4.mdlmets)
   metdf <- rbindlist(y)
   return(metdf)
 })), measure.vars = c("R2", "RMSE", "rRMSE", "MPE"))
 
 
-# 
-ciron.mdlmets.fl2all <- cbind(ciron.mdlmets.fl2all, 
-                              "exp"=rep("allfl2", nrow(ciron.mdlmets.fl2all)), 
+########################################################################################
+cironfl2.mdlmets.all <- cbind(cironfl2.mdlmets.all, 
+                              "exp"=rep("Two", nrow(cironfl2.mdlmets.all)), 
                               "id"=rep(rep(1:5000, 1, each=6), 4))
 
+cironfl2.mdlmets.clab <- cbind(cironfl2.mdlmets.clab, 
+                               "exp"=rep("mostly AB", nrow(cironfl2.mdlmets.clab)), 
+                               "id"=rep(rep(1:5000, 1, each=6), 4))
 
-ciron.mdlmets.fl2clab <- cbind(ciron.mdlmets.fl2clab, "exp"=rep("mostly AB", nrow(ciron.mdlmets.fl2clab)), "id"=rep(rep(1:5000, 1, each=6), 4))
-ciron.mdlmets.fl2clac <- cbind(ciron.mdlmets.fl2clac, "exp"=rep("mostly AC", nrow(ciron.mdlmets.clb)), "id"=rep(rep(1:5000, 1, each=6), 4))
-ciron.mdlmets.fl2clbc <- cbind(ciron.mdlmets.fl2clbc, "exp"=rep("mostly BC", nrow(ciron.mdlmets.clc)), "id"=rep(rep(1:5000, 1, each=6), 4))
+cironfl2.mdlmets.clac <- cbind(cironfl2.mdlmets.clac, 
+                               "exp"=rep("mostly AC", nrow(cironfl2.mdlmets.clac)), 
+                               "id"=rep(rep(1:5000, 1, each=6), 4))
+
+cironfl2.mdlmets.clbc <- cbind(cironfl2.mdlmets.clbc, 
+                               "exp"=rep("mostly BC", nrow(cironfl2.mdlmets.clbc)), 
+                               "id"=rep(rep(1:5000, 1, each=6), 4))
 
 
-
+cironfl2.mdlmets <- as.data.table(rbind(cironfl2.mdlmets.all, 
+                                        cironfl2.mdlmets.clab, 
+                                        cironfl2.mdlmets.clac, 
+                                        cironfl2.mdlmets.clbc))
 
 
 # 
@@ -581,7 +574,7 @@ cironfl2.mdlmets <- as.data.table(rbind(ciron.mdlmets.fl2all , ciron.mdlmets.fl2
 cironfl2.mdlmets <- cbind(cironfl2.mdlmets, "type"=rep("2fl", nrow(cironfl2.mdlmets)))
 
 
-ggplot(data=cironfl2.mdlmets[Forest_attr=="Stem volume"], aes(y=value, colour=Metrics))+
+ggplot(data=cironfl2.mdlmets[Forest_attr=="Basal area"], aes(y=value, colour=Metrics))+
   geom_boxplot()+
   facet_grid(variable~exp, scales = "free")+
   theme_base()+

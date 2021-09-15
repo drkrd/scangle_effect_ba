@@ -7,22 +7,24 @@ library(ggthemes)
 library(gstat)
 library(caret)
 library(ggrepel)
+library(stringr)
+
 
 
 ####IMPORTANT#####
 ##Here, read only NORMALISED POINT CLOUDS with label format "plotid_n.las"
-fd_smry <- fread("D:/1_Work/__R_codes/Projects/scangle_effect_ba/data/bauges_db15jul.csv", sep = ",")
-colnames(fd_smry)[2] <- "id_placette"
+bauges_db <- fread("D:/1_Work/__R_codes/Projects/scangle_effect_ba/data/bauges_db15jul.csv", sep = ",")
+colnames(bauges_db)[2] <- "id_placette"
 height <- 5
 
 
 # fd_smry <- fd_smry[, newstratum := ifelse(G175R/G175>0.75 & G175F/G175<0.25 , "Coniferes",
 #                                           ifelse(G175F/G175>0.75 & G175R/G175<0.25, "Feuillus", "Mixte"))]
 
-fd_smry <- fd_smry[, newstratum := ifelse(comp_R_G>75 & comp_F_G<25 , "Coniferes",
-                                          ifelse(comp_F_G>75 & comp_R_G<25, "Feuillus", "Mixte"))]
+bauges_db <- bauges_db[, newstratum := ifelse(comp_R_G>75 & comp_F_G<25 , "Coniferes",
+                                              ifelse(comp_F_G>75 & comp_R_G<25, "Feuillus", "Mixte"))]
 
-setkey(fd_smry, "id_placette")
+setkey(bauges_db, "id_placette")
 
 
 
@@ -116,35 +118,30 @@ func_refmodls <- function(db, form)
               "MPE" = MPE))
 }
 
-fd_smry <- fd_smry[id_placette %in% plotmetsflall$id_placette]
-fd_smry1 <- fd_smry[,c("id_placette", "G75", "volume_tige", "volume_total", "newstratum", "stratum",
+bauges_db <- bauges_db[id_placette %in% plotmetsflall$id_placette]
+bauges_db1 <- bauges_db[,c("id_placette", "G75", "volume_tige", "volume_total", "newstratum", "stratum",
                        "G175", "volume_tige_175", "volume_total_175")]
-fd_smry_con <- fd_smry1[newstratum=="Coniferes"]
-fd_smry_feu <- fd_smry1[newstratum=="Feuillus"]
-fd_smry_mix <- fd_smry1[stratum=="Mixte"]
+bauges_db_con <- bauges_db1[newtratum=="Coniferes"]
+bauges_db_feu <- bauges_db1[newstratum=="Feuillus"]
+bauges_db_mix <- bauges_db1[newstratum=="Mixte"]
 
-mets.all.all <- fd_smry1[plotmetsflall[id_placette %in% fd_smry1$id_placette]]
-mets.all.con <- fd_smry_con[plotmetsflall[id_placette %in% fd_smry_con$id_placette]]
-mets.all.feu <- fd_smry_feu[plotmetsflall[id_placette %in% fd_smry_feu$id_placette]]
-mets.all.mix <- fd_smry_mix[plotmetsflall[id_placette %in% fd_smry_mix$id_placette]]
-
-
-f1l1 <- log(G75)~log(meanch)+log(varch)+log(pflidr)+log(cvladlidr)
-f1l2 <- log(G75)~log(meanch)+log(varch)+log(pflidr)+log(sdvfplidr)
-
-f1a <- (G75)~(meanch)+(varch)+(pflidr)+(cvladlidr)
-f2a <- (G75)~(meanch)+(varch)+(pflidr)+(sdvfplidr)
+mets.all.all <- bauges_db1[plotmetsflall[id_placette %in% bauges_db1$id_placette]]
+mets.all.con <- bauges_db_con[plotmetsflall[id_placette %in% bauges_db_con$id_placette]]
+mets.all.feu <- bauges_db_feu[plotmetsflall[id_placette %in% bauges_db_feu$id_placette]]
+mets.all.mix <- bauges_db_mix[plotmetsflall[id_placette %in% bauges_db_mix$id_placette]]
 
 
-f1v <- log(G75)~log(meanch)+log(varch)+log(pfsumprof)+log(sdvfp)
-f2l <- log(volume_total)~log(meanch)+log(varch)+log(pflidr)+log(sdvfplidr)
-f2v <- log(volume_total)~log(meanch)+log(varch)+log(pfsumprof)+log(sdvfp)
-f3l <- log(volume_tige)~log(meanch)+log(varch)+log(pflidr)+log(cvladlidr)
-f3v <- log(volume_tige)~log(meanch)+log(varch)+log(pfsumprof)+log(cvladvox)
+f1l <- log(G175)~log(meanch)+log(varch)+log(pflidr)+log(cvladlidr)
+f1v <- log(G175)~log(meanch)+log(varch)+log(pfsumprof)+log(cvladvox)
+f2l <- log(volume_total_175)~log(meanch)+log(varch)+log(pflidr)+log(cvladvox)
+f2v <- log(volume_total_175)~log(meanch)+log(varch)+log(pfsumprof)+log(cvladvox)
+f3l <- log(volume_tige_175)~log(meanch)+log(varch)+log(pflidr)+log(cvladvox)
+f3v <- log(volume_tige_175)~log(meanch)+log(varch)+log(pfsumprof)+log(cvladvox)
 
+mets.all.con1 <- mets.all.con[id_placette!="171_IRSTEA"]
 
-mdl<- train(f3v,
-            data = mets.all.mix,
+mdl<- train(f2v,
+            data = mets.all.feu,
             method = "lm",
             trControl = trainControl(method="LOOCV"))
 summary(mdl)
@@ -153,6 +150,8 @@ obs <- mdl$pred$obs
 pred <- mdl$pred$pred
 yobs <- exp(obs)
 ypred <- exp(pred)
+
+#correction for back-transformation
 see <- sqrt(sum((obs-pred)^2)/(length(obs)-5))
 cf <- exp((see^2)/2)
 ypred <- ypred*cf
@@ -160,9 +159,25 @@ SSE <- sum((yobs-ypred)^2)
 SST <- sum((mean(yobs)-yobs)^2)
 R2 <- 1-(SSE/SST)
 1-((1-R2)*(length(ypred)-1)/(length(ypred)-4-1))
-(100/length(ypred))*sum((yobs-ypred)/yobs)
+sum((yobs-ypred)/yobs)*(100/length(ypred))
 sqrt(mean((yobs-ypred)^2))
 (sum(yobs-ypred))/length(yobs)
+((sum(yobs-ypred))/length(yobs))*100/mean(yobs)
+
+x <- as.data.frame(cbind(yobs, ypred, 
+                         id=mets.all.con$id_placette))
+x$yobs <- as.numeric(x$yobs)
+x$ypred <- as.numeric(x$ypred)
+
+
+ggplot(data=x, aes(x=yobs, y=ypred))+
+  geom_point()+
+  geom_abline()+
+  geom_label(aes(label=id), size=3)
+
+
+
+
 
 
 

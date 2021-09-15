@@ -579,7 +579,7 @@ func_mdlmets <- function(obs, pred, for_attr, mettype)
 }
 
 
-ciron.mdlmets.all <- melt(rbindlist(lapply(cironfl1.all, function(x)
+cironfl1.mdlmets.all <- melt(rbindlist(lapply(cironfl1.all, function(x)
 {
   G.l.mdlmets <- func_mdlmets(x$G.lidr.obs, x$G.lidr.pred, "Basal area", "ref")
   G.v.mdlmets <- func_mdlmets(x$G.vox.obs, x$G.vox.pred, "Basal area", "vox")
@@ -596,7 +596,7 @@ ciron.mdlmets.all <- melt(rbindlist(lapply(cironfl1.all, function(x)
   metdf <- rbindlist(y)
   return(metdf)
 })), measure.vars = c("R2", "RMSE", "rRMSE", "MPE"))
-ciron.mdlmets.cla <- melt(rbindlist(lapply(cironfl1.cla, function(x)
+cironfl1.mdlmets.cla <- melt(rbindlist(lapply(cironfl1.cla, function(x)
 {
   G.l.mdlmets <- func_mdlmets(x$G.lidr.obs, x$G.lidr.pred, "Basal area", "ref")
   G.v.mdlmets <- func_mdlmets(x$G.vox.obs, x$G.vox.pred, "Basal area", "vox")
@@ -613,7 +613,7 @@ ciron.mdlmets.cla <- melt(rbindlist(lapply(cironfl1.cla, function(x)
   metdf <- rbindlist(y)
   return(metdf)
 })), measure.vars = c("R2", "RMSE", "rRMSE", "MPE"))
-ciron.mdlmets.clb <- melt(rbindlist(lapply(cironfl1.clb, function(x)
+cironfl1.mdlmets.clb <- melt(rbindlist(lapply(cironfl1.clb, function(x)
 {
   G.l.mdlmets <- func_mdlmets(x$G.lidr.obs, x$G.lidr.pred, "Basal area", "ref")
   G.v.mdlmets <- func_mdlmets(x$G.vox.obs, x$G.vox.pred, "Basal area", "vox")
@@ -630,7 +630,7 @@ ciron.mdlmets.clb <- melt(rbindlist(lapply(cironfl1.clb, function(x)
   metdf <- rbindlist(y)
   return(metdf)
 })), measure.vars = c("R2", "RMSE", "rRMSE", "MPE"))
-ciron.mdlmets.clc <- melt(rbindlist(lapply(cironfl1.clc, function(x)
+cironfl1.mdlmets.clc <- melt(rbindlist(lapply(cironfl1.clc, function(x)
 {
   G.l.mdlmets <- func_mdlmets(x$G.lidr.obs, x$G.lidr.pred, "Basal area", "ref")
   G.v.mdlmets <- func_mdlmets(x$G.vox.obs, x$G.vox.pred, "Basal area", "vox")
@@ -650,52 +650,27 @@ ciron.mdlmets.clc <- melt(rbindlist(lapply(cironfl1.clc, function(x)
 
 
 
+cironfl1.mdlmets.all <- cbind(cironfl1.mdlmets.all, "exp"=rep("One", nrow(cironfl1.mdlmets.all)), "id"=rep(rep(1:5000, 1, each=6), 4))
+cironfl1.mdlmets.cla <- cbind(cironfl1.mdlmets.cla, "exp"=rep("mostly A", nrow(cironfl1.mdlmets.cla)), "id"=rep(rep(1:5000, 1, each=6), 4))
+cironfl1.mdlmets.clb <- cbind(cironfl1.mdlmets.clb, "exp"=rep("mostly B", nrow(cironfl1.mdlmets.clb)), "id"=rep(rep(1:5000, 1, each=6), 4))
+cironfl1.mdlmets.clc <- cbind(cironfl1.mdlmets.clc, "exp"=rep("mostly C", nrow(cironfl1.mdlmets.clc)), "id"=rep(rep(1:5000, 1, each=6), 4))
 
-
-
-ciron.mdlmets.ref <- melt(rbindlist(lapply(cironfl1.ref, function(x)
-{
-  m1.mdlmets <- func_mdlmets(x$m1.obs, x$m1.pred, "m1", "old")
-  m2.mdlmets <- func_mdlmets(x$m2.obs, x$m2.pred, "m2", "old")
-  m3.mdlmets <- func_mdlmets(x$m3.obs, x$m3.pred, "m3", "old")
-  m4.mdlmets <- func_mdlmets(x$m4.obs, x$m4.pred, "m4", "old")
-
-  y <- list(m1.mdlmets,
-            m2.mdlmets,
-            m3.mdlmets,
-            m4.mdlmets)
-  metdf <- rbindlist(y)
-  return(metdf)
-})), measure.vars = c("R2", "RMSE", "rRMSE", "MPE"))
-
-
-ciron.mdlmets.all <- cbind(ciron.mdlmets.all, "exp"=rep("all", nrow(ciron.mdlmets.all)), "id"=rep(rep(1:5000, 1, each=6), 4))
-ciron.mdlmets.cla <- cbind(ciron.mdlmets.cla, "exp"=rep("mostly A", nrow(ciron.mdlmets.cla)), "id"=rep(rep(1:5000, 1, each=6), 4))
-ciron.mdlmets.clb <- cbind(ciron.mdlmets.clb, "exp"=rep("mostly B", nrow(ciron.mdlmets.clb)), "id"=rep(rep(1:5000, 1, each=6), 4))
-ciron.mdlmets.clc <- cbind(ciron.mdlmets.clc, "exp"=rep("mostly C", nrow(ciron.mdlmets.clc)), "id"=rep(rep(1:5000, 1, each=6), 4))
-
-
-ciron.mdlmets.ref <- cbind(ciron.mdlmets.ref, "exp"=rep("all", nrow(ciron.mdlmets.all)), "id"=rep(rep(1:5000, 1, each=4), 4))
-ciron.mdlmets.ref <- as.data.table(rbind(ciron.mdlmets.ref))
-ciron.mdlmets.ref <- melt(ciron.mdlmets.ref)
-
-
-cironfl1.mdlmets <- as.data.table(rbind(ciron.mdlmets.all , 
+cironfl1.mdlmets <- as.data.table(rbind(ciron.mdlmets.all, 
                                         ciron.mdlmets.cla, 
                                         ciron.mdlmets.clb, 
                                         ciron.mdlmets.clc))
      
 cironfl1.mdlmets <- cbind(cironfl1.mdlmets, "type"=rep("1fl", nrow(cironfl1.mdlmets)))
             
-ggplot(data=cironfl1.mdlmets[Forest_attr=="Basal area"], aes(x=Metrics, y=value))+
-  geom_boxplot()+
-  facet_grid(variable~exp, scales = "free")+
+ggplot(data=ciron.mdlmets.all[Forest_attr=="Total area"], aes(y=value, fill=Metrics))+
+  geom_freqpoly()+
+  facet_grid(variable~., scales = "free")+
   theme_base()+
   scale_fill_grey()
 
 
 
-
+pmetsfl2.all[,.N, by=c("id_placette", "cl")]
 
 
 gl.coeffs <- NULL
