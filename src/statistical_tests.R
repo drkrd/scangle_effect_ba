@@ -1,4 +1,7 @@
-
+library(ggplot2)
+library(ggsci)
+library(data.table)
+library(rstatix)
 
 
 
@@ -65,11 +68,15 @@ pc
 
 
 
+mdlmets <- rbind(ciron.mdlmets, bauges.mdlmets)
 
 
+tst <- NULL
 
 
-tests.ref <- ciron.mdlmets[Forest_attr=="Basal area" & variable=="MPE" & exp%in%c("fl1","fl2","fl3") &Metrics=="ref", c("value", "exp") ]
+tests.ref <- ciron.mdlmets[Forest_attr=="Basal area" & 
+                             variable=="MPE"  &
+                             Metrics=="ref", c("value", "exp") ]
 # tests.ref <- tests.ref[exp!="C"]
 grp <- as.character(tests.ref$exp)
 value <- tests.ref$value
@@ -82,12 +89,203 @@ setDT(xy)
 xy <- xy[order(rank(estimate))]
 lvls <- xy$x
 xy$x <- factor(xy$x, levels=lvls)
+xy$fr_type <- "crn"
+xy$fr_at <- "G"
+xy$var <- "MPE"
 ggplot(xy, aes(x= x, y=estimate)) +        # ggplot2 plot with confidence intervals
   geom_point() +
   geom_errorbar(aes(ymin = conf.low, ymax = conf.high))+
   theme(axis.text.x = element_text(angle = 45))+
   geom_hline(yintercept = 0)
 sd(xy$estimate)
+tst <- rbind(tst, xy)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+tst2.vox <- NULL
+forest.type <- c("Mixed", "Coniferous", "Broadleaved", "Riparian")
+forest.attr <- c("Basal area", "Stem volume", "Total volume")
+mdl.measure <- c("R2", "rRMSE", "MPE")
+for(forest in forest.type){
+  for(forattr in forest.attr){
+    for(msr in mdl.measure){
+      tests.vox <- mdlmets[forest_type== forest&
+                                    Forest_attr==forattr & 
+                             fl %in% c("fl1")&
+                                   variable==msr  &
+                                   Metrics=="vox", c("value", "exp")]
+      # tests.vox <- tests.vox[exp!="C"]
+      grp <- as.character(tests.vox$exp)
+      value <- tests.vox$value
+      tests.vox <- data.frame(grp, value)
+      tests.vox$grp <- as.factor(tests.vox$grp)
+      oneway.test(value~grp, data = tests.vox)
+      xy <- games_howell_test(tests.vox, value~grp , conf.level = 0.99, detailed = FALSE)
+      xy$x <- paste0(xy$group1,'-',xy$group2)
+      setDT(xy)
+      xy <- xy[order(rank(estimate))]
+      lvls <- xy$x
+      xy$x <- factor(xy$x, levels=lvls)
+      xy$fr_type <- forest
+      xy$fr_at <- forattr
+      xy$var <- msr
+      tst2.vox <- rbind(tst2.vox, xy)
+    }
+  }
+}
+tst2.vox <- setDT(tst2.vox)
+tst2.vox.ns <- tst2.vox[p.adj.signif=="ns"]
+tst2.vox <- tst2.vox[,clr:= ifelse(p.adj.signif=="ns", "yes", "no")]
+
+
+tst2.ref.smry <- tst2.ref[, .(min=min(abs(estimate)),
+                              mn=mean(abs(estimate)),
+                              max=max(abs(estimate))), by=.(fr_type, fr_at, var)]
+
+tst2.ref.smry$Metrics <- "ref"
+
+tst2.vox.smry <- tst2.vox[, .(min=min(abs(estimate)),
+                              mn=mean(abs(estimate)),
+                              max=max(abs(estimate))), by=.(fr_type, fr_at, var)]
+
+
+tst2.vox.smry$Metrics <- "vox"
+
+tst2.smry <- rbind(tst2.ref.smry, tst2.vox.smry)
+
+tst2.smry$var <- factor(tst2.smry$var, levels=c("R2", "rRMSE", "MPE"))
+
+ggplot(data=tst2.smry, aes(x=fr_type, y=mn, colour=Metrics ))+
+  geom_point()+
+  facet_grid(var~fr_at, scales = "free")+
+  geom_errorbar(aes(ymin = min, ymax = max), width=0.3)+
+  theme_minimal()
+  
+
+
+
+
+tst2.ref <- NULL
+tst2.vox <- NULL
+forest.type <- c("Mixed", "Coniferous", "Broadleaved", "Riparian")
+forest.attr <- c("Basal area", "Stem volume", "Total volume")
+mdl.measure <- c("R2", "rRMSE", "MPE")
+for(forest in forest.type){
+  for(forattr in forest.attr){
+    for(msr in mdl.measure){
+      tests.ref <- mdlmets[forest_type== forest&
+                             Forest_attr==forattr &
+                             variable==msr  &
+                             Metrics=="ref", c("value", "exp")]
+      # tests.ref <- tests.ref[exp!="C"]
+      grp <- as.character(tests.ref$exp)
+      value <- tests.ref$value
+      tests.ref <- data.frame(grp, value)
+      tests.ref$grp <- as.factor(tests.ref$grp)
+      oneway.test(value~grp, data = tests.ref)
+      xy <- games_howell_test(tests.ref, value~grp , conf.level = 0.99, detailed = FALSE)
+      xy$x <- paste0(xy$group1,'-',xy$group2)
+      setDT(xy)
+      xy <- xy[order(rank(estimate))]
+      lvls <- xy$x
+      xy$x <- factor(xy$x, levels=lvls)
+      xy$fr_type <- forest
+      xy$fr_at <- forattr
+      xy$var <- msr
+      tst2.ref <- rbind(tst2.ref, xy)
+      tst2.ref.smry <- tst2.ref[, .(min=min(abs(estimate)),
+                                    mn=mean(abs(estimate)),
+                                    max=max(abs(estimate))), by=.(fr_type, fr_at, var)]
+      tst2.ref.smry$Metrics <- "ref"
+      
+      
+      tests.vox <- mdlmets[forest_type== forest&
+                             Forest_attr==forattr &
+                             variable==msr  &
+                             Metrics=="vox", c("value", "exp")]
+      # tests.vox <- tests.vox[exp!="C"]
+      grp <- as.character(tests.vox$exp)
+      value <- tests.vox$value
+      tests.vox <- data.frame(grp, value)
+      tests.vox$grp <- as.factor(tests.vox$grp)
+      oneway.test(value~grp, data = tests.vox)
+      xy <- games_howell_test(tests.vox, value~grp , conf.level = 0.99, detailed = FALSE)
+      xy$x <- paste0(xy$group1,'-',xy$group2)
+      setDT(xy)
+      xy <- xy[order(rank(estimate))]
+      lvls <- xy$x
+      xy$x <- factor(xy$x, levels=lvls)
+      xy$fr_type <- forest
+      xy$fr_at <- forattr
+      xy$var <- msr
+      tst2.vox <- rbind(tst2.vox, xy)
+      tst2.vox.smry <- tst2.vox[, .(min=min(abs(estimate)),
+                                    mn=mean(abs(estimate)),
+                                    max=max(abs(estimate))), by=.(fr_type, fr_at, var)]
+      tst2.vox.smry$Metrics <- "vox"
+      
+    }
+  }
+}
+tst2.smry <- rbind(tst2.ref.smry, tst2.vox.smry)
+
+
+tst2.ref <- setDT(tst2.ref)
+tst2.ref.ns <- tst2.ref[p.adj.signif=="ns"]
+tst2.ref <- tst2.ref[,clr:= ifelse(p.adj.signif=="ns", "yes", "no")]
+
+
+
+
+
+
+tst2.smry$var <- factor(tst2.smry$var, levels=c("R2", "rRMSE", "MPE"))
+
+ggplot(data=tst2.smry, aes(x=fr_type, y=mn, colour=Metrics ))+
+  geom_point()+
+  facet_grid(var~fr_at, scales = "free")+
+  geom_errorbar(aes(ymin = min, ymax = max), width=0.3)+
+  theme_minimal()
+
+
+mdlmets <- setDT(mdlmets)
+
+xx <- mdlmets[forest_type=="Mixed"&
+                variable=="R2"&
+              Forest_attr=="Total volume"&
+              Metrics=="ref"]
+
+
+  t <- pairwise.var.test(xx$value, xx$exp, p.method = "fdr", "two.sided")
+
+
+
+
+
+
+
+
+
+ggsave(x1, file="D:/1_Work/Dropbox/2_Publications/2_paper/results/gh.test.mixed.png", 
+       width=24*1.25, height=16*1.25, units="cm", dpi=320) 
+
+
+
+
+
+
 
 tests.vox <- ciron.mdlmets[Forest_attr=="Stem volume" & variable=="R2" & fl%in%c("fl1","fl2","fl3") &Metrics=="vox", c("value", "exp") ]
 # tests.vox <- tests.vox[exp!="C"]
