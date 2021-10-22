@@ -1,3 +1,57 @@
+func_btcor <- function(obs, pred)
+{
+  yobs <- exp(obs)
+  ypred <- exp(pred)
+  see <- sqrt(sum((obs-pred)^2)/(length(obs)-5))
+  cf <- exp((see^2)/2)
+  ypred <- ypred*cf
+  return(ypred)
+}
+
+func_mdlmets <- function(obs, pred, for_attr, mettype)
+{
+  yobs <- exp(obs)
+  ypred <- func_btcor(obs, pred)
+  SSE <- sum((yobs-ypred)^2)
+  SST <- sum((mean(yobs)-yobs)^2)
+  R2 <- 1-(SSE/SST)
+  aR2 <- 1-((1-R2)*(length(ypred)-1)/(length(ypred)-4-1))
+  MPE <- (100/length(ypred))*sum((yobs-ypred)/yobs)
+  RMSE <- sqrt(mean((yobs-ypred)^2))
+  RMSEpc <- RMSE*100/mean(yobs)
+  return(list( "Forest_attr"=for_attr, "Metrics"=mettype, "R2"=aR2, "RMSE"=RMSE,"rRMSE"=RMSEpc,"MPE"=MPE))
+}
+
+
+
+func_computeall <- function(chunk)
+{
+  las <- readLAS(chunk)                  # read the chunk
+  if (is.empty(las)) return(NULL)        # check if it contains points
+  
+  
+  id_plac <- sub("\\_n.*", "", basename(tools::file_path_sans_ext(chunk@files)))
+  mang <- sub(".*@", "", basename(tools::file_path_sans_ext(chunk@files)))
+  if(!is.na(as.numeric(mang)))
+  {
+    mang <- round(as.numeric(mang),2)
+    
+  }
+  meanch <- func_meanch(las@data$Z, las@data$ReturnNumber, ht = height)
+  varch <- func_varch(las@data$Z, las@data$ReturnNumber, ht = height)
+  pflidr <- func_pf(las@data$Z, las@data$ReturnNumber, ht = height)
+  cvladlidr <- func_cvlad(las@data$Z, las@data$ReturnNumber, ht = height)
+  return(list( 
+    id_placette = id_plac,
+    meanang = mang,
+    meanch = meanch,
+    varch = varch,
+    pflidr = pflidr,
+    cvladlidr = cvladlidr))
+}
+
+
+
 myProfilesLAD = function(Z, Zmax, dZ, th)
 {
   # creating an empty list
@@ -143,7 +197,10 @@ func_cvladprof <- function(z, rn, ht)
   {
     v <- NULL
     zm = min(ceiling(max(aoi$z)), 60)
-    val = myProfilesLAD(aoi$z, zm, dZ = 1, ht)
+    val = reshape2::melt(myProfilesLAD(aoi$z, zm, dZ = 1, ht))
+    setDT(val)
+    val <- val[1:max(which(value!=0))]
+    
     return(val)
     }
 }

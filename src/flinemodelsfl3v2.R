@@ -354,7 +354,7 @@ cironfl3.mdlmets.all <- melt(rbindlist(lapply(cironfl3.all, function(x)
 })), measure.vars = c("R2", "RMSE", "rRMSE", "MPE"))
 
 cironfl3.mdlmets.all <- cbind(cironfl3.mdlmets.all, 
-                              "exp"=rep("Three", nrow(cironfl3.mdlmets.all)), 
+                              "exp"=rep("fl3", nrow(cironfl3.mdlmets.all)), 
                               "id"=rep(rep(1:5000, 1, each=6), 4))
 
 
