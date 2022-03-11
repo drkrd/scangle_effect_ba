@@ -5,6 +5,7 @@ library(ggplot2)
 library(RStoolbox)
 library(ggspatial)
 library(data.table)
+library(lidR)
 
 ciron.poly <- read_sf("D:/1_Work/2_Ciron/Data/Shape_files/riparian_region.shp")
 ciron.plots <- fread("D:/1_Work/2_Ciron/Data/Field/centreplacette2154.csv")
@@ -78,8 +79,31 @@ ggsave(img.ciron, file="D:/1_Work/Dropbox/2_Publications/2_paper/results/ciron.p
 
 
 
+
+
+
+
+lascat73 <- readLAScatalog("D:/1_Work/5_Bauges/Data/ULM/LAS/unnorm/02_NUAGE_Z_L93/")
+plot(lascat73)
+
+
+bauges.db <- fread("D:/1_Work/__R_codes/Projects/scangle_effect_ba/data/bauges_db15jul.csv")
+exclude <- fread("D:/1_Work/__R_codes/Projects/dl_forestry_scangle/data/plots_a_exclure.txt", header = F)
+bauges.db <- bauges.db[!Id_plac%in%exclude$V1]
 bauges.db <- bauges.db[, newstratum:=ifelse(newstratum=="Coniferes", "Coniferous",
                                             ifelse(newstratum=="Feuillus", "Broadleaf", "Mixed"))]
+
+bauges.db <- fread("D:/1_Work/__R_codes/Projects/scangle_effect_ba/data/bauges_db15jul.csv", sep = ",")
+
+#changing name from Id_plac to id_placette.
+colnames(bauges.db)[2] <- "id_placette"  
+
+#reclassifying the plots based on the G that includes G for small trees i.e. dbh>7.5cm ; computed by Kamel 
+bauges.db <- bauges.db[, newstratum := ifelse(comp_R_G>75 & comp_F_G<25 , "Coniferes",
+                                              ifelse(comp_F_G>75 & comp_R_G<25, "Feuillus", "Mixte"))]
+
+
+
 bauges.plots <- st_as_sf(bauges.db, coords = c("X","Y"), crs=2154)
 bauges.plots <- st_transform(bauges.plots, crs=4326)
 x <-c(5.9, 6.5, 6.5, 5.9, 5.9)
@@ -89,9 +113,10 @@ poly <- st_sfc(st_polygon(list(xym)), crs = 4326)
 
 
 bauges.map <-basemap_raster(poly, 
-                     map_service = "osm", 
-                     map_type = "topographic",
-                     map_res = 0.9)
+                     map_service = "osm_stamen", 
+                     map_type = "terrain_bg",
+                     map_token = "",
+                     map_res = 1.1)
 
 bauges.map <- projectRaster(bauges.map, crs=4326)
 
@@ -101,7 +126,7 @@ img.bauges <- ggplot()+
         g = 2,
         b = 3,
         ggLayer = T)+
-  geom_sf(data=bauges.plots, aes(colour=newstratum, shape=newstratum), size=3)+
+  geom_sf(data=bauges.plots, size=2)+
   annotation_scale(location = "br", width_hint = 0.5) +
   annotation_north_arrow(location = "br", which_north = "true", 
                          pad_x = unit(0., "in"), pad_y = unit(0.5, "in"),
@@ -114,9 +139,11 @@ img.bauges <- ggplot()+
         legend.key = element_rect(colour = "transparent", fill = "transparent"),
         legend.background = element_rect(fill='white'),
         text=element_text(family="serif", size=12*(96/72)))+
-  scale_color_manual(values=c("Red", "Black", "Orange"))+
+  scale_color_manual(values=c("Red"))+
   coord_sf()
 img.bauges
+
+
 
 
 
