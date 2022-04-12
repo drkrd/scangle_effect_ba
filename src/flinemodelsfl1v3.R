@@ -9,6 +9,7 @@ library(caret)
 library(parallel)
 library(foreach)
 library(doParallel)
+library(stringr)
 
 # l1 <- ifelse(typefor=="conifere","con",
 #              ifelse(typefor=="feuillus","feu","mix"))
@@ -17,7 +18,7 @@ library(doParallel)
 
 ####IMPORTANT#####
 ##Here, read only NORMALISED POINT CLOUDS with label format "plotid_n.las"
-plots <- readLAScatalog("D:/1_Work/2_Ciron/Data/ULM/LAS/norm/plots/15m_rad/april2021/flightlines_1/")
+plots <- readLAScatalog("D:/1_Work/2_Ciron/Data/ULM/LAS/norm/plots/15m_rad/august2021/flightlines_1/")
 
 ####VERY IMPORTANT WHEN PROCESSING INDIVIDUAL PLOTS
 opt_independent_files(plots) <- TRUE 
@@ -55,9 +56,11 @@ plotmetsfl1 <- plotmetsfl1[,cl:=ifelse(meanang>=0&meanang<10, "a",
                                        ifelse(meanang>=10&meanang<20, "b",
                                               ifelse(meanang>=20&meanang<30, "c",
                                                      ifelse(meanang>=30&meanang<40,"d","e"))))]
+#there are 103 flight lines at this point
 plotmetsfl1 <- plotmetsfl1[cl!="d" & cl!="e"]
+#there are 96 flightlines at this point
 plotmetsfl1 <- plotmetsfl1[!meanang %in% c(37.24, 7.16, 4.60, 16.52)]
-
+#there are 93 flightlines at this point. This was the final number used in this study
 
 
 ##############################################################################################################################
@@ -74,7 +77,7 @@ names(alldtms) <- basename(file_path_sans_ext(names(alldtms)))
 
 
 #################################################################
-allvoxfiles <- as.data.table(list.files(paste0("D:/1_Work/2_Ciron/voxelisation/Results/May/wo_interpolation/voxfiles/flightlines_1/"), 
+allvoxfiles <- as.data.table(list.files(paste0("D:/1_Work/2_Ciron/voxelisation/Results/October/wo_interpolation/voxels/flightlines_1/"), 
                                         pattern = "*.vox",
                                         full.names = TRUE))
 allvoxfiles[, id_placette := sub("\\@.*","", basename(file_path_sans_ext(V1)))]
@@ -312,12 +315,12 @@ pmetsfl1.clc <- pmetsfl1.clc[, wt := wt/sum(wt), id_placette]
 
 
 ###########################################################################################################
-fd_smry <- fread("D:/1_Work/2_Ciron/Data/var_dendro_ciron.csv", sep = ",", drop = "id_placette")
-colnames(fd_smry)[1] <- "id_placette"
-fd_smry$id_placette <- as.character(fd_smry$id_placette)
-setkey(fd_smry, "id_placette")
-fd_smry <- ciron_db
-fd_smry <- fd_smry[!id_placetten%in%c(14,144)]
+fd.smry <- fread("D:/1_Work/2_Ciron/Data/var_dendro_ciron.csv", sep = ",", drop = "id_placette")
+colnames(fd.smry)[1] <- "id_placette"
+fd.smry$id_placette <- as.character(fd.smry$id_placette)
+setkey(fd.smry, "id_placette")
+fd.smry <- ciron_db
+fd.smry <- fd.smry[!id_placetten%in%c(14,144)]
 ###########################################################################################################
 ##Generate samples######
 ########################
@@ -669,12 +672,12 @@ ciron.mdlmets.clc <- melt(rbindlist(lapply(cironfl1.clc, function(x)
 
 ciron.mdlmets.ref <- melt(rbindlist(lapply(cironfl1.ref, function(x)
 {
-  m1.mdlmets <- func_mdlmets(x$m1.obs, x$m1.pred, "G1", "old")
-  m2.mdlmets <- func_mdlmets(x$m2.obs, x$m2.pred, "G2", "old")
-  m3.mdlmets <- func_mdlmets(x$m5.obs, x$m5.pred, "Vst1", "old")
-  m4.mdlmets <- func_mdlmets(x$m6.obs, x$m6.pred, "Vst2", "old")
-  m5.mdlmets <- func_mdlmets(x$m3.obs, x$m3.pred, "Vt1", "old")
-  m6.mdlmets <- func_mdlmets(x$m4.obs, x$m4.pred, "Vt2", "old")
+  m1.mdlmets <- func_mdlmets(x$m1.obs, x$m1.pred, "BA1", "old")
+  m2.mdlmets <- func_mdlmets(x$m2.obs, x$m2.pred, "BA2", "old")
+  m3.mdlmets <- func_mdlmets(x$m5.obs, x$m5.pred, "VOLst1", "old")
+  m4.mdlmets <- func_mdlmets(x$m6.obs, x$m6.pred, "VOLst2", "old")
+  m5.mdlmets <- func_mdlmets(x$m3.obs, x$m3.pred, "VOLtot1", "old")
+  m6.mdlmets <- func_mdlmets(x$m4.obs, x$m4.pred, "VOLtot2", "old")
   
 
   y <- list(m1.mdlmets,
@@ -697,6 +700,8 @@ ciron.mdlmets.clc <- cbind(ciron.mdlmets.clc, "exp"=rep("C", nrow(ciron.mdlmets.
 ciron.mdlmets.ref <- cbind(ciron.mdlmets.ref, "exp"=rep("all", nrow(ciron.mdlmets.all)), "id"=rep(rep(1:5000, 1, each=6), 4))
 ciron.mdlmets.ref <- as.data.table(rbind(ciron.mdlmets.ref))
 ciron.mdlmets.ref <- melt(ciron.mdlmets.ref)
+
+ciron.mdlmets.ref$fls <- "One flight line"
 
 
 cironfl1.mdlmets <- as.data.table(rbind(ciron.mdlmets.all, 

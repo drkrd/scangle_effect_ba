@@ -14,3 +14,7 @@ round(min(slope.df$lst),2)
 round(mean(slope.df$lst),2)
 round(max(slope.df$lst),2)
 
+
+xy <- lapply(alldtms, function(x){
+  mean(na.omit(as.vector(x)))
+})

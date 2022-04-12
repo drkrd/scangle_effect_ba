@@ -11,7 +11,7 @@ library(parallel)
 library(foreach)
 library(doParallel)
 
-plots <- readLAScatalog("D:/1_Work/2_Ciron/Data/ULM/LAS/norm/plots/15m_rad/april2021/flightlines_3/")
+plots <- readLAScatalog("D:/1_Work/2_Ciron/Data/ULM/LAS/norm/plots/15m_rad/august2021/flightlines_3/")
 height=5
 ####VERY IMPORTANT WHEN PROCESSING INDIVIDUAL PLOTS
 opt_independent_files(plots) <- TRUE
@@ -95,7 +95,7 @@ alldtms <- sapply(allpcs, function(x){
   USE.NAMES = TRUE)
 names(alldtms) <- basename(file_path_sans_ext(names(alldtms)))
 #################################################################
-allvoxfiles <- as.data.table(list.files(paste0("D:/1_Work/2_Ciron/voxelisation/Results/May/wo_interpolation/voxfiles/flightlines_3/"), 
+allvoxfiles <- as.data.table(list.files(paste0("D:/1_Work/2_Ciron/voxelisation/Results/October/wo_interpolation/voxels/flightlines_3/"), 
                                         pattern = "*.vox",
                                         full.names = TRUE))
 allvoxfiles[, id_placette := sub("\\@.*","",basename(file_path_sans_ext(V1)))]
@@ -147,8 +147,6 @@ pfcvladvox <- voxall[, .(cvladvox=cv(PADmean, na.rm = TRUE),
 setkeyv(pfcvladvox, c("id_placette", "meanang"))
 setkeyv(pmetsfl3, c("id_placette", "meanang"))
 pmetsfl3 <- pmetsfl3[pfcvladvox]
-pmetsfl3 <- pmetsfl3[which(id_placette %in% ciron_db$id_placette)]
-pmetsfl3 <- pmetsfl3[!pflidr==0]
 #######################################################################
 
 ######################################
@@ -158,7 +156,6 @@ pmetsfl3 <- pmetsfl3[!pflidr==0]
   pmetsfl3 <- unique(pmetsfl3[, prob := prop.table(table(cl))[cl], id_placette][])
   pmetsfl3 <- pmetsfl3[, wt := (1/prob)/(1/sum(prob)), id_placette]
   pmetsfl3 <- pmetsfl3[, wt := wt/sum(wt), id_placette]
-  pmetsfl3$meanang <- as.factor(pmetsfl3$meanang)
   pmetsfl3 <- pmetsfl3[pflidr!=0]
   pmetsfl3.all <- pmetsfl3
   

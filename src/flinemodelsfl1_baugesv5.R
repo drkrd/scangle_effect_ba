@@ -90,9 +90,15 @@ pmetsfl1 <- pmetsfl1[, cl:=ifelse(meanang>=0&meanang<10, "a",
                                          ifelse(meanang>=20&meanang<30, "c",
                                                 ifelse(meanang>=30&meanang<40,"d","e"))))]
 
-# classes 'd' and 'e' are not considered in this side.
+#there are a total of 494 flight lines at this point
+
+
+# classes 'd' and 'e' are not considered in this site.
 # High inclinations may be due to the flights making turns. Can't say with certainty
+# We are dropping all the flight lines with MSA > 30°
 pmetsfl1 <- pmetsfl1[cl!="d" & cl!="e"]
+
+#there are a total of 476 flight lines at this point
 
 # The following flight lines are problematic. There is no voxelisation for them because there was a problem
 # with the GPS time in the trajectory information, for these flight lines in particular.
@@ -163,6 +169,7 @@ pfcvladvox$meanang <- as.numeric(pfcvladvox$meanang)
 
 pfcvladvox <- pfcvladvox[id_placette%in%bauges.db$id_placette]
 pmetsfl1 <- pmetsfl1[which(id_placette %in% bauges.db$id_placette)]
+#only 420 flight lines remain  now
 #setting keys to join metrics
 setkeyv(pfcvladvox, c("id_placette", "meanang"))
 setkeyv(pmetsfl1, c("id_placette", "meanang"))
@@ -171,6 +178,7 @@ pmetsfl1 <- pmetsfl1[pfcvladvox]
 
 #drop some of the data that have pf of 0 because these values will cause a problem with log models  
 pmetsfl1 <- pmetsfl1[!pflidr==0]
+#there are 406 flight lines at this point. This is the final number that was used in the study
 
 ######################################
 #############All################
@@ -524,10 +532,10 @@ func_class.ssets <- function(pmets, cls)
 ###########################################################################################################
 ##Generate samples######
 ########################
-dbase <- pmetsfl1.mix.clc
+dbase <- pmetsfl1.mix.all
 clus <- makeCluster(detectCores() - 1)
 registerDoParallel(clus, cores = detectCores() - 1)
-smplstfl1.mix.clc <- foreach(i = 1:10000, .packages=c("dplyr", "data.table", "caret")) %dopar% {
+smplstfl1.mix.all <- foreach(i = 1:10000, .packages=c("dplyr", "data.table", "caret")) %dopar% {
   set.seed(i)
   dbase.sset <- dbase[, .SD[sample(.N, min(1,.N), prob = wt)], by = id_placette]
   return(which(dbase$cvladlidr%in%dbase.sset$cvladlidr & dbase$pflidr%in%dbase.sset$pflidr))
@@ -535,8 +543,8 @@ smplstfl1.mix.clc <- foreach(i = 1:10000, .packages=c("dplyr", "data.table", "ca
 }
 stopCluster(clus)
 registerDoSEQ()
-smplstfl1.mix.clc <- matrix(unlist(smplstfl1.mix.clc), nrow = length(unique(dbase$id_placette)))
-smplstfl1.mix.clc <- unique(as.data.table(t(smplstfl1.mix.clc)))
+smplstfl1.mix.all <- matrix(unlist(smplstfl1.mix.all), nrow = length(unique(dbase$id_placette)))
+smplstfl1.mix.all <- unique(as.data.table(t(smplstfl1.mix.all)))
 ###########################################################################################################
 time_log <- data.frame()
 ########################################
@@ -689,7 +697,7 @@ time_log <- rbind(time_log, c(i, (stop-start)))
 #   return(list( "Forest_attr"=for_attr, "Metrics"=mettype, "R2"=aR2, "RMSE"=RMSE,"rRMSE"=RMSEpc,"MPE"=MPE))
 # }
 
-baugesfl1.mdlmets.con.all <- melt(rbindlist(lapply(baugesfl1.con.all1, function(x)
+baugesfl1.mdlmets.con.all <- melt(rbindlist(lapply(baugesfl1.con.all, function(x)
 {
   G.l.mdlmets <- func_mdlmets(x$G.lidr.obs, x$G.lidr.pred, "Basal area", "ref")
   G.v.mdlmets <- func_mdlmets(x$G.vox.obs, x$G.vox.pred, "Basal area", "vox")
@@ -706,7 +714,7 @@ baugesfl1.mdlmets.con.all <- melt(rbindlist(lapply(baugesfl1.con.all1, function(
   metdf <- rbindlist(y)
   return(metdf)
 })), measure.vars = c("R2", "RMSE", "rRMSE", "MPE"))
-baugesfl1.mdlmets.con.cla <- melt(rbindlist(lapply(baugesfl1.con.cla1, function(x)
+baugesfl1.mdlmets.con.cla <- melt(rbindlist(lapply(baugesfl1.con.cla, function(x)
 {
   G.l.mdlmets <- func_mdlmets(x$G.lidr.obs, x$G.lidr.pred, "Basal area", "ref")
   G.v.mdlmets <- func_mdlmets(x$G.vox.obs, x$G.vox.pred, "Basal area", "vox")
@@ -723,7 +731,7 @@ baugesfl1.mdlmets.con.cla <- melt(rbindlist(lapply(baugesfl1.con.cla1, function(
   metdf <- rbindlist(y)
   return(metdf)
 })), measure.vars = c("R2", "RMSE", "rRMSE", "MPE"))
-baugesfl1.mdlmets.con.clb <- melt(rbindlist(lapply(baugesfl1.con.clb1, function(x)
+baugesfl1.mdlmets.con.clb <- melt(rbindlist(lapply(baugesfl1.con.clb, function(x)
 {
   G.l.mdlmets <- func_mdlmets(x$G.lidr.obs, x$G.lidr.pred, "Basal area", "ref")
   G.v.mdlmets <- func_mdlmets(x$G.vox.obs, x$G.vox.pred, "Basal area", "vox")
@@ -740,7 +748,7 @@ baugesfl1.mdlmets.con.clb <- melt(rbindlist(lapply(baugesfl1.con.clb1, function(
   metdf <- rbindlist(y)
   return(metdf)
 })), measure.vars = c("R2", "RMSE", "rRMSE", "MPE"))
-baugesfl1.mdlmets.con.clc <- melt(rbindlist(lapply(baugesfl1.con.clc1, function(x)
+baugesfl1.mdlmets.con.clc <- melt(rbindlist(lapply(baugesfl1.con.clc, function(x)
 {
   G.l.mdlmets <- func_mdlmets(x$G.lidr.obs, x$G.lidr.pred, "Basal area", "ref")
   G.v.mdlmets <- func_mdlmets(x$G.vox.obs, x$G.vox.pred, "Basal area", "vox")
@@ -827,7 +835,7 @@ baugesfl1.mdlmets.feu.clc <- melt(rbindlist(lapply(baugesfl1.feu.clc, function(x
   return(metdf)
 })), measure.vars = c("R2", "RMSE", "rRMSE", "MPE"))
 
-baugesfl1.mdlmets.mix.all <- melt(rbindlist(lapply(baugesfl1.mix.all1, function(x)
+baugesfl1.mdlmets.mix.all <- melt(rbindlist(lapply(baugesfl1.mix.all, function(x)
 {
   G.l.mdlmets <- func_mdlmets(x$G.lidr.obs, x$G.lidr.pred, "Basal area", "ref")
   G.v.mdlmets <- func_mdlmets(x$G.vox.obs, x$G.vox.pred, "Basal area", "vox")
@@ -844,7 +852,7 @@ baugesfl1.mdlmets.mix.all <- melt(rbindlist(lapply(baugesfl1.mix.all1, function(
   metdf <- rbindlist(y)
   return(metdf)
 })), measure.vars = c("R2", "RMSE", "rRMSE", "MPE"))
-baugesfl1.mdlmets.mix.cla <- melt(rbindlist(lapply(baugesfl1.mix.cla1, function(x)
+baugesfl1.mdlmets.mix.cla <- melt(rbindlist(lapply(baugesfl1.mix.cla, function(x)
 {
   G.l.mdlmets <- func_mdlmets(x$G.lidr.obs, x$G.lidr.pred, "Basal area", "ref")
   G.v.mdlmets <- func_mdlmets(x$G.vox.obs, x$G.vox.pred, "Basal area", "vox")
@@ -861,7 +869,7 @@ baugesfl1.mdlmets.mix.cla <- melt(rbindlist(lapply(baugesfl1.mix.cla1, function(
   metdf <- rbindlist(y)
   return(metdf)
 })), measure.vars = c("R2", "RMSE", "rRMSE", "MPE"))
-baugesfl1.mdlmets.mix.clb <- melt(rbindlist(lapply(baugesfl1.mix.clb1, function(x)
+baugesfl1.mdlmets.mix.clb <- melt(rbindlist(lapply(baugesfl1.mix.clb, function(x)
 {
   G.l.mdlmets <- func_mdlmets(x$G.lidr.obs, x$G.lidr.pred, "Basal area", "ref")
   G.v.mdlmets <- func_mdlmets(x$G.vox.obs, x$G.vox.pred, "Basal area", "vox")
@@ -878,7 +886,7 @@ baugesfl1.mdlmets.mix.clb <- melt(rbindlist(lapply(baugesfl1.mix.clb1, function(
   metdf <- rbindlist(y)
   return(metdf)
 })), measure.vars = c("R2", "RMSE", "rRMSE", "MPE"))
-baugesfl1.mdlmets.mix.clc <- melt(rbindlist(lapply(baugesfl1.mix.clc1, function(x)
+baugesfl1.mdlmets.mix.clc <- melt(rbindlist(lapply(baugesfl1.mix.clc, function(x)
 {
   G.l.mdlmets <- func_mdlmets(x$G.lidr.obs, x$G.lidr.pred, "Basal area", "ref")
   G.v.mdlmets <- func_mdlmets(x$G.vox.obs, x$G.vox.pred, "Basal area", "vox")
@@ -952,20 +960,23 @@ bauges.mdlmets.feu <- rbind(baugesfl1.mdlmets.feu,
                             baugesfl3.mdlmets.feu.all)
 bauges.mdlmets.feu$exp <- factor(bauges.mdlmets.feu$exp, levels=c("fl1","A", "B", "C",
                                                                   "fl2", "AB", "AC", "BC", "fl3")) 
+
+
 bauges.mdlmets.mix <- rbind(baugesfl1.mdlmets.mix, 
-                            baugesfl2.mdlmets.mix)
+                            baugesfl2.mdlmets.mix,
+                            baugesfl3.mdlmets.mix.all)
 bauges.mdlmets.mix$exp <- factor(bauges.mdlmets.mix$exp, levels=c("fl1","A", "B", "C",
-                                                                  "fl2", "AB", "AC", "BC")) 
+                                                                  "fl2", "AB", "AC", "BC", "fl3")) 
 bauges.mdlmets.con$forest_type <- rep("Coniferous", nrow(bauges.mdlmets.con))
 bauges.mdlmets.feu$forest_type <- rep("Broadleaved", nrow(bauges.mdlmets.feu))
 bauges.mdlmets.mix$forest_type <- rep("Mixed", nrow(bauges.mdlmets.mix))
 
 bauges.mdlmets <- rbind(bauges.mdlmets.con, bauges.mdlmets.feu, bauges.mdlmets.mix)
 
-ggplot(data=bauges.mdlmets.mix[variable!="RMSE" & 
+ggplot(data=bauges.mdlmets.con[variable!="RMSE" & 
                              Forest_attr=="Basal area"], aes(fill=Metrics, y=value, x=exp))+
   geom_boxplot()+
-  facet_wrap(Forest_attr~variable, scales = "free")+
+  facet_grid(variable~Forest_attr, scales = "free")+
   theme_minimal()+
   labs(x="Experiments", y="")+
   scale_fill_grey(start = 1, end = 0.5)+

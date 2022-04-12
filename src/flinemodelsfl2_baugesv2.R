@@ -644,7 +644,7 @@ func_mdlmets <- function(obs, pred, for_attr, mettype)
   return(list( "Forest_attr"=for_attr, "Metrics"=mettype, "R2"=aR2, "RMSE"=RMSE,"rRMSE"=RMSEpc,"MPE"=MPE))
 }
 
-baugesfl2.mdlmets.con.all <- melt(rbindlist(lapply(baugesfl2.con.all1, function(x)
+baugesfl2.mdlmets.con.all <- melt(rbindlist(lapply(baugesfl2.con.all, function(x)
 {
   G.l.mdlmets <- func_mdlmets(x$G.lidr.obs, x$G.lidr.pred, "Basal area", "ref")
   G.v.mdlmets <- func_mdlmets(x$G.vox.obs, x$G.vox.pred, "Basal area", "vox")
@@ -661,7 +661,7 @@ baugesfl2.mdlmets.con.all <- melt(rbindlist(lapply(baugesfl2.con.all1, function(
   metdf <- rbindlist(y)
   return(metdf)
 })), measure.vars = c("R2", "RMSE", "rRMSE", "MPE"))
-baugesfl2.mdlmets.con.clab <- melt(rbindlist(lapply(baugesfl2.con.clab1, function(x)
+baugesfl2.mdlmets.con.clab <- melt(rbindlist(lapply(baugesfl2.con.clab, function(x)
 {
   G.l.mdlmets <- func_mdlmets(x$G.lidr.obs, x$G.lidr.pred, "Basal area", "ref")
   G.v.mdlmets <- func_mdlmets(x$G.vox.obs, x$G.vox.pred, "Basal area", "vox")
@@ -678,7 +678,7 @@ baugesfl2.mdlmets.con.clab <- melt(rbindlist(lapply(baugesfl2.con.clab1, functio
   metdf <- rbindlist(y)
   return(metdf)
 })), measure.vars = c("R2", "RMSE", "rRMSE", "MPE"))
-baugesfl2.mdlmets.con.clac <- melt(rbindlist(lapply(baugesfl2.con.clac1, function(x)
+baugesfl2.mdlmets.con.clac <- melt(rbindlist(lapply(baugesfl2.con.clac, function(x)
 {
   G.l.mdlmets <- func_mdlmets(x$G.lidr.obs, x$G.lidr.pred, "Basal area", "ref")
   G.v.mdlmets <- func_mdlmets(x$G.vox.obs, x$G.vox.pred, "Basal area", "vox")
@@ -695,77 +695,7 @@ baugesfl2.mdlmets.con.clac <- melt(rbindlist(lapply(baugesfl2.con.clac1, functio
   metdf <- rbindlist(y)
   return(metdf)
 })), measure.vars = c("R2", "RMSE", "rRMSE", "MPE"))
-baugesfl2.mdlmets.con.clbc <- melt(rbindlist(lapply(baugesfl2.con.clbc1, function(x)
-{
-  G.l.mdlmets <- func_mdlmets(x$G.lidr.obs, x$G.lidr.pred, "Basal area", "ref")
-  G.v.mdlmets <- func_mdlmets(x$G.vox.obs, x$G.vox.pred, "Basal area", "vox")
-  vtot.l.mdlmets <- func_mdlmets(x$vtot.lidr.obs, x$vtot.lidr.pred, "Total volume", "ref")
-  vtot.v.mdlmets <- func_mdlmets(x$vtot.vox.obs, x$vtot.vox.pred, "Total volume", "vox")
-  vtig.l.mdlmets <- func_mdlmets(x$vtig.lidr.obs, x$vtig.lidr.pred, "Stem volume", "ref")
-  vtig.v.mdlmets <- func_mdlmets(x$vtig.vox.obs, x$vtig.vox.pred, "Stem volume", "vox")
-  y <- list(G.l.mdlmets,
-            G.v.mdlmets,
-            vtot.l.mdlmets,
-            vtot.v.mdlmets,
-            vtig.l.mdlmets,
-            vtig.v.mdlmets)
-  metdf <- rbindlist(y)
-  return(metdf)
-})), measure.vars = c("R2", "RMSE", "rRMSE", "MPE"))
-
-
-baugesfl2.mdlmets.feu.all <- melt(rbindlist(lapply(baugesfl2.feu.all1, function(x)
-{
-  G.l.mdlmets <- func_mdlmets(x$G.lidr.obs, x$G.lidr.pred, "Basal area", "ref")
-  G.v.mdlmets <- func_mdlmets(x$G.vox.obs, x$G.vox.pred, "Basal area", "vox")
-  vtot.l.mdlmets <- func_mdlmets(x$vtot.lidr.obs, x$vtot.lidr.pred, "Total volume", "ref")
-  vtot.v.mdlmets <- func_mdlmets(x$vtot.vox.obs, x$vtot.vox.pred, "Total volume", "vox")
-  vtig.l.mdlmets <- func_mdlmets(x$vtig.lidr.obs, x$vtig.lidr.pred, "Stem volume", "ref")
-  vtig.v.mdlmets <- func_mdlmets(x$vtig.vox.obs, x$vtig.vox.pred, "Stem volume", "vox")
-  y <- list(G.l.mdlmets,
-            G.v.mdlmets,
-            vtot.l.mdlmets,
-            vtot.v.mdlmets,
-            vtig.l.mdlmets,
-            vtig.v.mdlmets)
-  metdf <- rbindlist(y)
-  return(metdf)
-})), measure.vars = c("R2", "RMSE", "rRMSE", "MPE"))
-baugesfl2.mdlmets.feu.clab <- melt(rbindlist(lapply(baugesfl2.feu.clab1, function(x)
-{
-  G.l.mdlmets <- func_mdlmets(x$G.lidr.obs, x$G.lidr.pred, "Basal area", "ref")
-  G.v.mdlmets <- func_mdlmets(x$G.vox.obs, x$G.vox.pred, "Basal area", "vox")
-  vtot.l.mdlmets <- func_mdlmets(x$vtot.lidr.obs, x$vtot.lidr.pred, "Total volume", "ref")
-  vtot.v.mdlmets <- func_mdlmets(x$vtot.vox.obs, x$vtot.vox.pred, "Total volume", "vox")
-  vtig.l.mdlmets <- func_mdlmets(x$vtig.lidr.obs, x$vtig.lidr.pred, "Stem volume", "ref")
-  vtig.v.mdlmets <- func_mdlmets(x$vtig.vox.obs, x$vtig.vox.pred, "Stem volume", "vox")
-  y <- list(G.l.mdlmets,
-            G.v.mdlmets,
-            vtot.l.mdlmets,
-            vtot.v.mdlmets,
-            vtig.l.mdlmets,
-            vtig.v.mdlmets)
-  metdf <- rbindlist(y)
-  return(metdf)
-})), measure.vars = c("R2", "RMSE", "rRMSE", "MPE"))
-baugesfl2.mdlmets.feu.clac <- melt(rbindlist(lapply(baugesfl2.feu.clac1, function(x)
-{
-  G.l.mdlmets <- func_mdlmets(x$G.lidr.obs, x$G.lidr.pred, "Basal area", "ref")
-  G.v.mdlmets <- func_mdlmets(x$G.vox.obs, x$G.vox.pred, "Basal area", "vox")
-  vtot.l.mdlmets <- func_mdlmets(x$vtot.lidr.obs, x$vtot.lidr.pred, "Total volume", "ref")
-  vtot.v.mdlmets <- func_mdlmets(x$vtot.vox.obs, x$vtot.vox.pred, "Total volume", "vox")
-  vtig.l.mdlmets <- func_mdlmets(x$vtig.lidr.obs, x$vtig.lidr.pred, "Stem volume", "ref")
-  vtig.v.mdlmets <- func_mdlmets(x$vtig.vox.obs, x$vtig.vox.pred, "Stem volume", "vox")
-  y <- list(G.l.mdlmets,
-            G.v.mdlmets,
-            vtot.l.mdlmets,
-            vtot.v.mdlmets,
-            vtig.l.mdlmets,
-            vtig.v.mdlmets)
-  metdf <- rbindlist(y)
-  return(metdf)
-})), measure.vars = c("R2", "RMSE", "rRMSE", "MPE"))
-baugesfl2.mdlmets.feu.clbc <- melt(rbindlist(lapply(baugesfl2.feu.clbc1, function(x)
+baugesfl2.mdlmets.con.clbc <- melt(rbindlist(lapply(baugesfl2.con.clbc, function(x)
 {
   G.l.mdlmets <- func_mdlmets(x$G.lidr.obs, x$G.lidr.pred, "Basal area", "ref")
   G.v.mdlmets <- func_mdlmets(x$G.vox.obs, x$G.vox.pred, "Basal area", "vox")
@@ -784,7 +714,7 @@ baugesfl2.mdlmets.feu.clbc <- melt(rbindlist(lapply(baugesfl2.feu.clbc1, functio
 })), measure.vars = c("R2", "RMSE", "rRMSE", "MPE"))
 
 
-baugesfl2.mdlmets.mix.all <- melt(rbindlist(lapply(baugesfl2.mix.all1, function(x)
+baugesfl2.mdlmets.feu.all <- melt(rbindlist(lapply(baugesfl2.feu.all, function(x)
 {
   G.l.mdlmets <- func_mdlmets(x$G.lidr.obs, x$G.lidr.pred, "Basal area", "ref")
   G.v.mdlmets <- func_mdlmets(x$G.vox.obs, x$G.vox.pred, "Basal area", "vox")
@@ -801,7 +731,7 @@ baugesfl2.mdlmets.mix.all <- melt(rbindlist(lapply(baugesfl2.mix.all1, function(
   metdf <- rbindlist(y)
   return(metdf)
 })), measure.vars = c("R2", "RMSE", "rRMSE", "MPE"))
-baugesfl2.mdlmets.mix.clab <- melt(rbindlist(lapply(baugesfl2.mix.clab1, function(x)
+baugesfl2.mdlmets.feu.clab <- melt(rbindlist(lapply(baugesfl2.feu.clab, function(x)
 {
   G.l.mdlmets <- func_mdlmets(x$G.lidr.obs, x$G.lidr.pred, "Basal area", "ref")
   G.v.mdlmets <- func_mdlmets(x$G.vox.obs, x$G.vox.pred, "Basal area", "vox")
@@ -818,7 +748,7 @@ baugesfl2.mdlmets.mix.clab <- melt(rbindlist(lapply(baugesfl2.mix.clab1, functio
   metdf <- rbindlist(y)
   return(metdf)
 })), measure.vars = c("R2", "RMSE", "rRMSE", "MPE"))
-baugesfl2.mdlmets.mix.clac <- melt(rbindlist(lapply(baugesfl2.mix.clac1, function(x)
+baugesfl2.mdlmets.feu.clac <- melt(rbindlist(lapply(baugesfl2.feu.clac, function(x)
 {
   G.l.mdlmets <- func_mdlmets(x$G.lidr.obs, x$G.lidr.pred, "Basal area", "ref")
   G.v.mdlmets <- func_mdlmets(x$G.vox.obs, x$G.vox.pred, "Basal area", "vox")
@@ -835,7 +765,77 @@ baugesfl2.mdlmets.mix.clac <- melt(rbindlist(lapply(baugesfl2.mix.clac1, functio
   metdf <- rbindlist(y)
   return(metdf)
 })), measure.vars = c("R2", "RMSE", "rRMSE", "MPE"))
-baugesfl2.mdlmets.mix.clbc <- melt(rbindlist(lapply(baugesfl2.mix.clbc1, function(x)
+baugesfl2.mdlmets.feu.clbc <- melt(rbindlist(lapply(baugesfl2.feu.clbc, function(x)
+{
+  G.l.mdlmets <- func_mdlmets(x$G.lidr.obs, x$G.lidr.pred, "Basal area", "ref")
+  G.v.mdlmets <- func_mdlmets(x$G.vox.obs, x$G.vox.pred, "Basal area", "vox")
+  vtot.l.mdlmets <- func_mdlmets(x$vtot.lidr.obs, x$vtot.lidr.pred, "Total volume", "ref")
+  vtot.v.mdlmets <- func_mdlmets(x$vtot.vox.obs, x$vtot.vox.pred, "Total volume", "vox")
+  vtig.l.mdlmets <- func_mdlmets(x$vtig.lidr.obs, x$vtig.lidr.pred, "Stem volume", "ref")
+  vtig.v.mdlmets <- func_mdlmets(x$vtig.vox.obs, x$vtig.vox.pred, "Stem volume", "vox")
+  y <- list(G.l.mdlmets,
+            G.v.mdlmets,
+            vtot.l.mdlmets,
+            vtot.v.mdlmets,
+            vtig.l.mdlmets,
+            vtig.v.mdlmets)
+  metdf <- rbindlist(y)
+  return(metdf)
+})), measure.vars = c("R2", "RMSE", "rRMSE", "MPE"))
+
+
+baugesfl2.mdlmets.mix.all <- melt(rbindlist(lapply(baugesfl2.mix.all, function(x)
+{
+  G.l.mdlmets <- func_mdlmets(x$G.lidr.obs, x$G.lidr.pred, "Basal area", "ref")
+  G.v.mdlmets <- func_mdlmets(x$G.vox.obs, x$G.vox.pred, "Basal area", "vox")
+  vtot.l.mdlmets <- func_mdlmets(x$vtot.lidr.obs, x$vtot.lidr.pred, "Total volume", "ref")
+  vtot.v.mdlmets <- func_mdlmets(x$vtot.vox.obs, x$vtot.vox.pred, "Total volume", "vox")
+  vtig.l.mdlmets <- func_mdlmets(x$vtig.lidr.obs, x$vtig.lidr.pred, "Stem volume", "ref")
+  vtig.v.mdlmets <- func_mdlmets(x$vtig.vox.obs, x$vtig.vox.pred, "Stem volume", "vox")
+  y <- list(G.l.mdlmets,
+            G.v.mdlmets,
+            vtot.l.mdlmets,
+            vtot.v.mdlmets,
+            vtig.l.mdlmets,
+            vtig.v.mdlmets)
+  metdf <- rbindlist(y)
+  return(metdf)
+})), measure.vars = c("R2", "RMSE", "rRMSE", "MPE"))
+baugesfl2.mdlmets.mix.clab <- melt(rbindlist(lapply(baugesfl2.mix.clab, function(x)
+{
+  G.l.mdlmets <- func_mdlmets(x$G.lidr.obs, x$G.lidr.pred, "Basal area", "ref")
+  G.v.mdlmets <- func_mdlmets(x$G.vox.obs, x$G.vox.pred, "Basal area", "vox")
+  vtot.l.mdlmets <- func_mdlmets(x$vtot.lidr.obs, x$vtot.lidr.pred, "Total volume", "ref")
+  vtot.v.mdlmets <- func_mdlmets(x$vtot.vox.obs, x$vtot.vox.pred, "Total volume", "vox")
+  vtig.l.mdlmets <- func_mdlmets(x$vtig.lidr.obs, x$vtig.lidr.pred, "Stem volume", "ref")
+  vtig.v.mdlmets <- func_mdlmets(x$vtig.vox.obs, x$vtig.vox.pred, "Stem volume", "vox")
+  y <- list(G.l.mdlmets,
+            G.v.mdlmets,
+            vtot.l.mdlmets,
+            vtot.v.mdlmets,
+            vtig.l.mdlmets,
+            vtig.v.mdlmets)
+  metdf <- rbindlist(y)
+  return(metdf)
+})), measure.vars = c("R2", "RMSE", "rRMSE", "MPE"))
+baugesfl2.mdlmets.mix.clac <- melt(rbindlist(lapply(baugesfl2.mix.clac, function(x)
+{
+  G.l.mdlmets <- func_mdlmets(x$G.lidr.obs, x$G.lidr.pred, "Basal area", "ref")
+  G.v.mdlmets <- func_mdlmets(x$G.vox.obs, x$G.vox.pred, "Basal area", "vox")
+  vtot.l.mdlmets <- func_mdlmets(x$vtot.lidr.obs, x$vtot.lidr.pred, "Total volume", "ref")
+  vtot.v.mdlmets <- func_mdlmets(x$vtot.vox.obs, x$vtot.vox.pred, "Total volume", "vox")
+  vtig.l.mdlmets <- func_mdlmets(x$vtig.lidr.obs, x$vtig.lidr.pred, "Stem volume", "ref")
+  vtig.v.mdlmets <- func_mdlmets(x$vtig.vox.obs, x$vtig.vox.pred, "Stem volume", "vox")
+  y <- list(G.l.mdlmets,
+            G.v.mdlmets,
+            vtot.l.mdlmets,
+            vtot.v.mdlmets,
+            vtig.l.mdlmets,
+            vtig.v.mdlmets)
+  metdf <- rbindlist(y)
+  return(metdf)
+})), measure.vars = c("R2", "RMSE", "rRMSE", "MPE"))
+baugesfl2.mdlmets.mix.clbc <- melt(rbindlist(lapply(baugesfl2.mix.clbc, function(x)
 {
   G.l.mdlmets <- func_mdlmets(x$G.lidr.obs, x$G.lidr.pred, "Basal area", "ref")
   G.v.mdlmets <- func_mdlmets(x$G.vox.obs, x$G.vox.pred, "Basal area", "vox")

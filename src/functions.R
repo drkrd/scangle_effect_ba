@@ -146,6 +146,38 @@ func_pf <- function(z, rn, ht)
   }
 }
 
+func_pf <- function(z, rn, ht)
+{
+  aoi <- as.data.frame(cbind(z, rn))
+  if (is.null(aoi))
+  {
+    return(NULL)
+  }
+  else
+  {
+    aoi_f <- aoi[aoi$rn==1,]
+    num <- aoi_f[aoi_f$z<=ht,]
+    return(nrow(num)/nrow(aoi_f))
+  }
+}
+
+func_pf1 <- function(z, rn, ht)
+{
+  aoi <- as.data.frame(cbind(z, rn))
+  if (is.null(aoi))
+  {
+    return(NULL)
+  }
+  else
+  {
+    num <- aoi[aoi$z<=ht,]
+    return(nrow(num)/nrow(aoi))
+  }
+}
+
+
+
+
 func_cvlad <- function(z, rn, ht)
 {
   aoi <- as.data.frame(cbind(z, rn))

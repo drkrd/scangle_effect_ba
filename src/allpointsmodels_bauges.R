@@ -87,64 +87,95 @@ voxall <- rbindlist(apply(allvoxfiles, 1, func_normvox2,
 setDT(voxall)
 pfcvladvox <- voxall[, .(cvladvox=cv(PADmean, na.rm = TRUE), 
                          sdvfp=sqrt(sum(PADmean*(k1-(sum(k1*PADmean)/sum(PADmean)))^2)/(sum(PADmean)*(length(PADmean[which(PADmean!=0)])-1)/length(PADmean[which(PADmean!=0)]))),
-                         pfsumprof=exp(-0.5*sum(PADmean, na.rm = TRUE))), by=.(id_placette, meanang)]
+                         pfsumprof=exp(-0.5*sum(PADmean, na.rm = TRUE)),
+                         pai=sum(PADmean, na.rm = TRUE)), by=.(id_placette, meanang)]
+
 setkeyv(pfcvladvox, c("id_placette"))
 setkeyv(pmetsflall, c("id_placette"))
 pmetsflall <- pmetsflall[pfcvladvox]
 ##############################################################################################################
-func_refmodls <- function(db, form)
-{
-  mdl<- train(form,
-              data = db,
-              method = "lm",
-              trControl = trainControl(method="LOOCV"))
-  
-  obs <- mdl$pred$obs
-  pred <- mdl$pred$pred 
-  yobs <- exp(obs)
-  predicted <- exp(pred)
-  see <- sqrt(sum((obs-pred)^2)/(length(obs)-5))
-  cf <- exp((see^2)/2)
-  predicted <- predicted*cf
-  SSE <- sum((yobs-predicted)^2)
-  SST <- sum((mean(yobs)-yobs)^2)
-  R2 <- 1-(SSE/SST)
-  aR2 <- 1-((1-R2)*(length(predicted)-1)/(length(predicted)-4-1))
-  MPE <- (100/length(predicted))*sum((yobs-predicted)/yobs)
-  RMSE <- sqrt(mean((yobs-predicted)^2))
-  RMSEpc <- RMSE*100/mean(yobs)
-  bias <- (sum(yobs-predicted))/length(yobs)
-  biaspc <- bias*100/mean(yobs)
-  return(list("R2" = aR2, 
-              "RMSE" = RMSE,
-              "MAE" = MAE,
-              "MPE" = MPE))
-}
-
 bauges.db <- bauges.db[id_placette %in% pmetsflall$id_placette]
-bauges.db <- bauges.db[,c("id_placette", "G75", "volume_tige", "volume_total", 
+bauges.db <- bauges.db[,c("X","Y","id_placette","G175", "G75", "volume_tige", "volume_total", 
                           "comp_F_G","comp_R_G","comp_G","newstratum", "stratum")]
+bauges.db$volume_total <- bauges.db$volume_total*(10000/(pi*15^2))
+bauges.db$volume_tige <- bauges.db$volume_tige*(10000/(pi*15^2))
 
 bauges.db2 <- readxl::read_xlsx("data/table_placette - PNR74.xlsx", sheet = "placette" )
 bauges.db2 <- as.data.table(bauges.db2)
 bauges.db74 <- bauges.db2[A_exclure=="N"]
 bauges.db <- bauges.db[id_placette%in%bauges.db74$Id_plac]
 
+bauges.db.con <- rbind(bauges.db.con, bauges.db.mix[id_placette=="268_74_ONF"])
+
 bauges.db.con <- bauges.db[newstratum=="Coniferes"]
 bauges.db.feu <- bauges.db[newstratum=="Feuillus"]
 bauges.db.mix <- bauges.db[newstratum=="Mixte"]
 
+pmetsall.all <- bauges.db[pmetsflall[id_placette %in% bauges.db$id_placette]]
 pmetsall.con <- bauges.db.con[pmetsflall[id_placette %in% bauges.db.con$id_placette]]
 pmetsall.feu <- bauges.db.feu[pmetsflall[id_placette %in% bauges.db.feu$id_placette]]
 pmetsall.mix <- bauges.db.mix[pmetsflall[id_placette %in% bauges.db.mix$id_placette]]
 
+pmetsall.con <- rbind(pmetsall.con, pmetsall.mix [id_placette=="268_74_ONF"])
+pmetsall.mix1 <- pmetsall.mix[id_placette!="268_74_ONF"]
+
 
 f1l <- log(G75)~log(meanch)+log(varch)+log(pflidr)+log(cvladlidr)
-f1v <- log(G75)~log(meanch)+log(varch)+log(pfsumprof)+log(cvladvox)
+f1v <- log(G75)~log(meanch)+log(varch)+log(pai)+log(cvladvox)
 f2l <- log(volume_total)~log(meanch)+log(varch)+log(pflidr)+log(cvladlidr)
-f2v <- log(volume_total)~log(meanch)+log(varch)+log(pfsumprof)+log(cvladvox)
+f2v <- log(volume_total)~log(meanch)+log(varch)+log(pai)+log(cvladvox)
 f3l <- log(volume_tige)~log(meanch)+log(varch)+log(pflidr)+log(cvladlidr)
-f3v <- log(volume_tige)~log(meanch)+log(varch)+log(pfsumprof)+log(cvladvox)
+f3v <- log(volume_tige)~log(meanch)+log(varch)+log(pai)+log(cvladvox)
+
+x <- lm(f1l, data = pmetsall.mix)
+
+
+pred <- predict(x, pmetsall.mix[id_placette=="268_74_ONF"])
+obs <- log(pmetsall.mix$G75)
+yobs <- exp(obs)
+ypred <- exp(pred)
+#correction for back-transformation
+see <- sqrt(sum((obs-pred)^2)/(length(obs)-5))
+cf <- exp((see^2)/2)
+ypred <- ypred*cf
+SST <- sum((mean(yobs)-yobs)^2)
+SSE <- sum((yobs-ypred)^2)
+SSR <- sum((ypred-mean(yobs))^2)
+R2 <- 1-(SSE/SST)
+1-((1-R2)*(length(ypred)-1)/(length(ypred)-4-1))
+
+
+
+x1 <- (G75)~(meanch)+(varch)+(pflidr)+(cvladlidr)
+x2 <- (G75)~(meanch)+(varch)+(pfsumprof)+(cvladvox)
+
+
+mdl<- train(f1v,
+            data = pmetsall.feu,
+            method = "lm",
+            trControl = trainControl(method="LOOCV"))
+summary(mdl)
+
+obs <- mdl$pred$obs
+pred <- mdl$pred$pred
+yobs <- exp(obs)
+ypred <- exp(pred)
+#correction for back-transformation
+see <- sqrt(sum((obs-pred)^2)/(length(obs)-5))
+cf <- exp((see^2)/2)
+ypred <- ypred*cf
+
+SST <- sum((mean(yobs)-yobs)^2)
+SSE <- sum((yobs-ypred)^2)
+SSR <- sum((ypred-mean(yobs))^2)
+R2 <- 1-(SSE/SST)
+aR2 <- 1-((1-R2)*(length(ypred)-1)/(length(ypred)-4-1))
+MPE <- (100/length(ypred))*sum((yobs-ypred)/yobs)
+RMSE <- sqrt(mean((yobs-ypred)^2))
+RMSEpc <- RMSE*100/mean(yobs)
+aR2
+RMSEpc
+MPE
 
 
 
@@ -152,6 +183,9 @@ f3v <- log(volume_tige)~log(meanch)+log(varch)+log(pfsumprof)+log(cvladvox)
 
 
 
+
+
+sum(ypred-mean(yobs))
 
 {
 mdl.g.ref<- train(f1l,
@@ -341,7 +375,7 @@ sp3 <- ggplot(data=bgs.preds, aes(x=observed, y=predicted, colour=Metrics))+
   
 
 ggsave(sp3, file="D:/1_Work/Dropbox/2_Publications/2_paper/results/sp_mix.png", 
-       width=24*1.25, height=8*1.25, units="cm", dpi=320) 
+       width=16*1.25, height=8*1.25, units="cm", dpi=320) 
 
 
 
@@ -609,5 +643,6 @@ allmdlmets <- melt(allmdlmets[], id.vars=c("for_attr", "mets", "type"))
 
 
 
-
+pmetsfl1 <- pmetsfl1[,newstratum:=ifelse(id_placette%in%bauges.db[newstratum=="Coniferes"]$id_placette, "Coniferous",
+                                        ifelse(id_placette%in%bauges.db[newstratum=="Mixte"]$id_placette, "Mixed", "Broadleaved"))]
 

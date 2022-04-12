@@ -27,7 +27,7 @@ bauges.db <- bauges.db[, newstratum := ifelse(comp_R_G>75 & comp_F_G<25 , "Conif
 setkey(bauges.db, "id_placette")
 
 #subset only the necessary columns
-bauges.db <- bauges.db[, c("id_placette","G175" ,"G75", "volume_total", "volume_tige", "stratum", "newstratum")]
+bauges.db <- bauges.db[, c("id_placette", "X", "Y","G175" ,"G75", "volume_total", "volume_tige", "stratum", "newstratum")]
 bauges.db <- bauges.db[, `:=`(volume_total=(volume_total*10000)/(pi*15*15),
                               volume_tige=(volume_tige*10000)/(pi*15*15))]
 bauges.db2 <- readxl::read_xlsx("data/table_placette - PNR74.xlsx", sheet = "placette" )
@@ -654,7 +654,7 @@ baugesfl3.mdlmets.con.all <- melt(rbindlist(lapply(baugesfl3.con.all, function(x
   metdf <- rbindlist(y)
   return(metdf)
 })), measure.vars = c("R2", "RMSE", "rRMSE", "MPE"))
-baugesfl3.mdlmets.feu.all <- melt(rbindlist(lapply(baugesfl3.feu.all1, function(x)
+baugesfl3.mdlmets.feu.all <- melt(rbindlist(lapply(baugesfl3.feu.all, function(x)
 {
   G.l.mdlmets <- func_mdlmets(x$G.lidr.obs, x$G.lidr.pred, "Basal area", "ref")
   G.v.mdlmets <- func_mdlmets(x$G.vox.obs, x$G.vox.pred, "Basal area", "vox")
@@ -671,7 +671,7 @@ baugesfl3.mdlmets.feu.all <- melt(rbindlist(lapply(baugesfl3.feu.all1, function(
   metdf <- rbindlist(y)
   return(metdf)
 })), measure.vars = c("R2", "RMSE", "rRMSE", "MPE"))
-baugesfl3.mdlmets.mix.all <- melt(rbindlist(lapply(baugesfl3.mix.all1, function(x)
+baugesfl3.mdlmets.mix.all <- melt(rbindlist(lapply(baugesfl3.mix.all, function(x)
 {
   G.l.mdlmets <- func_mdlmets(x$G.lidr.obs, x$G.lidr.pred, "Basal area", "ref")
   G.v.mdlmets <- func_mdlmets(x$G.vox.obs, x$G.vox.pred, "Basal area", "vox")

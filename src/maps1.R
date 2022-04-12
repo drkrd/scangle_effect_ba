@@ -81,8 +81,6 @@ ggsave(img.ciron, file="D:/1_Work/Dropbox/2_Publications/2_paper/results/ciron.p
 
 
 
-
-
 lascat73 <- readLAScatalog("D:/1_Work/5_Bauges/Data/ULM/LAS/unnorm/02_NUAGE_Z_L93/")
 plot(lascat73)
 
@@ -90,24 +88,23 @@ plot(lascat73)
 bauges.db <- fread("D:/1_Work/__R_codes/Projects/scangle_effect_ba/data/bauges_db15jul.csv")
 exclude <- fread("D:/1_Work/__R_codes/Projects/dl_forestry_scangle/data/plots_a_exclure.txt", header = F)
 bauges.db <- bauges.db[!Id_plac%in%exclude$V1]
-bauges.db <- bauges.db[, newstratum:=ifelse(newstratum=="Coniferes", "Coniferous",
-                                            ifelse(newstratum=="Feuillus", "Broadleaf", "Mixed"))]
 
 bauges.db <- fread("D:/1_Work/__R_codes/Projects/scangle_effect_ba/data/bauges_db15jul.csv", sep = ",")
+bauges.db$label <- "Field plots"
 
 #changing name from Id_plac to id_placette.
 colnames(bauges.db)[2] <- "id_placette"  
 
-#reclassifying the plots based on the G that includes G for small trees i.e. dbh>7.5cm ; computed by Kamel 
-bauges.db <- bauges.db[, newstratum := ifelse(comp_R_G>75 & comp_F_G<25 , "Coniferes",
-                                              ifelse(comp_F_G>75 & comp_R_G<25, "Feuillus", "Mixte"))]
 
+#acquisitions
+bauges.ac <- read_sf("D:/1_Work/5_Bauges/shapefiles/7374tiles_dissolved_parc_merged.shp")
+bauges.ac <- st_transform(bauges.ac, crs=4326)
 
 
 bauges.plots <- st_as_sf(bauges.db, coords = c("X","Y"), crs=2154)
 bauges.plots <- st_transform(bauges.plots, crs=4326)
 x <-c(5.9, 6.5, 6.5, 5.9, 5.9)
-y <-c(45.5, 45.5, 46.0, 46.0, 45.5)
+y <-c(45.4, 45.4, 46.0, 46.0, 45.4)
 xym <- cbind(x, y)
 poly <- st_sfc(st_polygon(list(xym)), crs = 4326)
 
@@ -126,28 +123,33 @@ img.bauges <- ggplot()+
         g = 2,
         b = 3,
         ggLayer = T)+
-  geom_sf(data=bauges.plots, size=2)+
-  annotation_scale(location = "br", width_hint = 0.5) +
+  geom_sf(data=bauges.plots, aes())+
+  geom_sf(data=bauges.ac, aes(fill= Label, colour=NA), alpha=0)+
+  annotation_scale(location = "br", width_hint = 0.5, height=unit(0.25, "cm")) +
   annotation_north_arrow(location = "br", which_north = "true", 
                          pad_x = unit(0., "in"), pad_y = unit(0.5, "in"),
                          style = north_arrow_fancy_orienteering)+
   theme(axis.text.y = element_text(angle=90),
-        legend.position = c(0.85, 0.88),
+        legend.position = "None",
         legend.title = element_blank(),
-        legend.text = element_text(size=15),
+        legend.text = element_text(size=12),
         legend.box="horizontal",
         legend.key = element_rect(colour = "transparent", fill = "transparent"),
-        legend.background = element_rect(fill='white'),
+        legend.background = element_rect(fill='transparent'),
         text=element_text(family="serif", size=12*(96/72)))+
   scale_color_manual(values=c("Red"))+
-  coord_sf()
+  coord_sf()+
+  scale_x_continuous(breaks = (c(6.0, 6.2, 6.4)),
+                     labels = c("6.0°E", "6.2°E", "6.4°E"))+
+  scale_y_continuous(breaks = (c(45.6, 45.7, 45.8)),
+                     labels = c("45.6°N", "45.7°N", "45.8°N"))
 img.bauges
 
 
 
 
 
-ggsave(img.bauges, file="D:/1_Work/Dropbox/2_Publications/2_paper/results/bauges.plots.final.png", 
+ggsave(img.bauges, file="D:/1_Work/Dropbox/2_Publications/3_JSTARS/bauges.plots.svg", 
        width=12*1.25, height=12*1.25, units="cm", dpi=640) 
 
 

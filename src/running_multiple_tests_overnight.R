@@ -193,56 +193,61 @@ for(i in 1:nrow(df))
 
 
 
+ciron.db <- ciron.db[!id_placetten%in%c("14","144")]
 
-l1 <- c("pmetsfl1.mix.all",
-        "pmetsfl1.mix.cla", 
-        "pmetsfl1.mix.clb", 
-        "pmetsfl1.mix.clc",
-        "pmetsfl2.mix.all", 
-        "pmetsfl2.mix.clab", 
-        "pmetsfl2.mix.clac", 
-        "pmetsfl2.mix.clbc", 
-        "pmetsfl3.mix.all")
-l2 <- c("smplstfl1.mix.all", 
-        "smplstfl1.mix.cla", 
-        "smplstfl1.mix.clb",
-        "smplstfl1.mix.clc", 
-        "smplstfl2.mix.all",
-        "smplstfl2.mix.clab", 
-        "smplstfl2.mix.clac", 
-        "smplstfl2.mix.clbc",
-        "smplstfl3.mix.all")
-l3 <- c("bauges.db.mix", 
-        "bauges.db.mix", 
-        "bauges.db.mix",
-        "bauges.db.mix", 
-        "bauges.db.mix", 
-        "bauges.db.mix", 
-        "bauges.db.mix",
-        "bauges.db.mix", 
-        "bauges.db.mix")
-l4 <- c("baugesfl1.mix.all",
-        "baugesfl1.mix.cla", 
-        "baugesfl1.mix.clb", 
-        "baugesfl1.mix.clc",
-        "baugesfl2.mix.all", 
-        "baugesfl2.mix.clab", 
-        "baugesfl2.mix.clac", 
-        "baugesfl2.mix.clbc",
-        "baugesfl3.mix.all")
+names(ciron.db) <- c("G75", "volume_total", "volume_tige", "id_placette")
+
+l1 <- c("pmetsfl1.all",
+        "pmetsfl1.cla", 
+        "pmetsfl1.clb", 
+        "pmetsfl1.clc",
+        "pmetsfl2.all", 
+        "pmetsfl2.clab", 
+        "pmetsfl2.clac", 
+        "pmetsfl2.clbc", 
+        "pmetsfl3.all")
+l2 <- c("smplstfl1.all", 
+        "smplstfl1.cla", 
+        "smplstfl1.clb",
+        "smplstfl1.clc", 
+        "smplstfl2.all",
+        "smplstfl2.clab", 
+        "smplstfl2.clac", 
+        "smplstfl2.clbc",
+        "smplstfl3.all")
+l3 <- c("ciron.db", 
+        "ciron.db", 
+        "ciron.db",
+        "ciron.db", 
+        "ciron.db", 
+        "ciron.db", 
+        "ciron.db",
+        "ciron.db", 
+        "ciron.db")
+l4 <- c("cironfl1.all",
+        "cironfl1.cla", 
+        "cironfl1.clb", 
+        "cironfl1.clc",
+        "cironfl2.all", 
+        "cironfl2.clab", 
+        "cironfl2.clac", 
+        "cironfl2.clbc",
+        "cironfl3.all")
+
 
 
 df <- data.frame(l1, l2, l3, l4)
 
 
 
-
-for(i in 1:nrow(df))
+time.log <- NULL
+for(i in 1:9)
 {
+  start <- Sys.time()
   dbase <- get(df$l1[i])
   clus <- makeCluster(detectCores() - 1)
   registerDoParallel(clus, cores = detectCores() - 1)
-  x <- foreach(ii = 1:1000, .packages=c("dplyr", "data.table", "caret", "sampling")) %dopar% {
+  x <- foreach(ii = 1:10000, .packages=c("dplyr", "data.table", "caret", "sampling")) %dopar% {
     set.seed(ii)
     dbase.sset <- dbase[, .SD[sample(.N, min(1,.N), prob = wt)], by = id_placette]
     return(which(dbase$cvladlidr%in%dbase.sset$cvladlidr & dbase$pflidr%in%dbase.sset$pflidr))
@@ -270,7 +275,6 @@ for(i in 1:nrow(df))
   assign(df$l4[i],foreach(x = 1:n, .packages=c("dplyr", "data.table", "caret")) %dopar% {
     idx <- as.vector(unlist(idx.lst[x]))
     mets_for_model <- dbase[idx]
-    dbase$id_placette <- as.factor(dbase$id_placette)
     setkey(mets_for_model,"id_placette")
     mets_for_model <- fds[mets_for_model]
     mets1 <- mets_for_model[,c("G75","meanch", "varch", 'pflidr', "cvladlidr")]
@@ -369,9 +373,12 @@ for(i in 1:nrow(df))
                "vtig.v.coeff" = vtig.v.coeff
     ))
     return(lst)
+    if(x%%1000==0)print(x)
   })
   stopCluster(clus)
   registerDoSEQ()
 print("Done")  
+end <- Sys.time()
+time.log <- rbind(rbind(time.log, c(n, (end-start))))
 }
 

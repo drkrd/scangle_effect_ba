@@ -59,20 +59,10 @@ ggsave(brplot.refvox, file="D:/1_Work/Dropbox/2_Publications/2_paper/results/bar
 
 
 
-old <- -4.91
-new <- -4.14
-
-diff <- new-old
-pc <- 100*(diff/old)
-pc
-
-
-
-
-
 
 
 mdlmets <- rbind(ciron.mdlmets, bauges.mdlmets)
+mdlmets <- mdlmets[exp %in% c("A", "B", "C", "AB", "AC", "BC")]
 ###########
 #paiwise tests between ref and vox
 ###########
@@ -104,6 +94,63 @@ for(forest in forest.type){
         yy <- cbind(forest, forattr, msr, ex, t1$p.value, t2, varp, varF, testF)
         ref.vox.test <- rbind(ref.vox.test, yy)
       }}}}
+
+
+
+
+
+mdlmets <- rbind(ciron.mdlmets, bauges.mdlmets)
+mdlmets1 <- mdlmets[exp %in% c("A", "B", "C", "AB", "AC", "BC")]
+###########
+#paiwise tests fl1 and fl2
+###########
+tests <- mdlmets1[forest_type== forest&
+                   Forest_attr==forattr & 
+                   fl %in% c("fl1", "fl2")&
+                   variable==msr  &
+                   Metrics=="ref" , c("value", "fl")]
+grp <- as.character(tests$fl)
+value <- tests$value
+tests <- data.frame(grp, value)
+tests$grp <- as.factor(tests$grp)
+t1 <- oneway.test(value~grp, data = tests)
+t2 <- games_howell_test(tests, value~grp , conf.level = 0.99, detailed = FALSE)
+t3 <- var.test(value~grp, data = tests, alternative = "greater", conf.level = 0.99)
+varp <- t3$p.value
+varF <- t3$statistic
+testF <- var(tests$value[tests$grp=="fl1"])/var(tests$value[tests$grp=="fl2"])
+t3$conf.int
+
+
+
+
+forest.type <- c("Mixed", "Coniferous", "Broadleaved", "Riparian")
+forest.attr <- c("Basal area", "Stem volume", "Total volume")
+mdl.measure <- c("R2", "rRMSE", "MPE")
+ref.vox.test <- NULL
+for(forest in forest.type){
+  for(forattr in forest.attr){
+    for(msr in mdl.measure){
+      tests <- mdlmets1[forest_type== forest&
+                          Forest_attr==forattr & 
+                          fl %in% c("fl1", "fl2")&
+                          variable==msr  &
+                          Metrics=="ref" , c("value", "fl")]
+      grp <- as.character(tests$fl)
+      value <- tests$value
+      tests <- data.frame(grp, value)
+      tests$grp <- as.factor(tests$grp)
+      t1 <- oneway.test(value~grp, data = tests)
+      t2 <- games_howell_test(tests, value~grp , conf.level = 0.99, detailed = FALSE)
+      t3 <- var.test(value~grp, data = tests, alternative = "greater", conf.level = 0.99)
+      varp <- t3$p.value
+      varF <- t3$statistic
+      testF <- var(tests$value[tests$grp=="fl1"])/var(tests$value[tests$grp=="fl2"])
+      t3$conf.int
+      yy <- cbind(forest, forattr, msr, t1$p.value, t2, varp, varF, testF)
+      ref.vox.test <- rbind(ref.vox.test, yy)
+    }}}
+ref.vox.test1 <- ref.vox.test
 
 ref.vox.test1 <- NULL
 for(forest in forest.type){
@@ -184,36 +231,39 @@ tests <- mdlmets[forest_type=="Riparian"&
 
 
 
+rfvt <- melt(ref.vox.test1, measure.vars = c("estimate", "varF"))
 
-
-g1 <- ggplot(data=ref.vox.test1, aes(x=forattr, y=estimate, 
-                                     colour=forest, shape=sigvarp))+
-  geom_point()+
-  facet_wrap(msr~., scales="free" )+
+g1 <- ggplot(data=rfvt[forattr=="Total volume"], aes(x=forattr, y=value, 
+                                                              colour=forest, shape=sigvarp))+
+  geom_point(size=2)+
+  facet_wrap(variable~msr, scales="free" )+
   labs(x = "Forest attribute",
        y = "")+
-  scale_shape_manual(values=c(19, 4))+
+  scale_shape_manual(values=c(4))+
   scale_colour_manual(values=c("black", "#0072B2", "#D55E00", "#CC79A7"))+
+  scale_x_discrete(labels= c("BA", "Vst"))+
   theme_few()+
   theme(axis.title.y = element_blank(),
-        axis.text.x = element_text(angle = 0),
-        legend.position = "top",
+        legend.position = "none",
+        strip.background = element_blank(),
+        strip.text.x = element_blank(),
         text=element_text(family="serif", size=8*(96/72)))
 
-ggsave(g1, file="D:/1_Work/Dropbox/2_Publications/2_paper/results/ref.vox.meantests.svg", 
-       width=15*1.25, height=12*1.25, units="cm", dpi=640) 
+ggsave(g1, file="D:/1_Work/Dropbox/2_Publications/2_paper/results/ref.meanFtests.svg", 
+       width=7.5*1.25, height=*1.25, units="cm", dpi=640) 
 
-g2 <- ggplot(data=ref.vox.test, aes(x=ex, y=varF, colour=forattr, shape=sigvarp))+
+g2 <- ggplot(data=ref.vox.test1[forattr!="Total volume"], aes(x=forattr, y=varF, 
+                                     colour=forest, shape=sigvarp))+
   geom_point(size=2)+
-  facet_wrap(c("msr","forest"), scales="free" )+
+  facet_wrap(msr~., scales="free" )+
   labs(x = "Experiments",
        y = "")+
-  scale_shape_manual(values=c(19, 4))+
-  scale_colour_manual(values=c("#0072B2", "#D55E00", "black"))+
+  scale_shape_manual(values=c(4))+
+  scale_colour_manual(values=c("black", "#0072B2", "#D55E00", "#CC79A7"))+
+  scale_x_discrete(labels= c("BA", "Vst"))+
   theme_few()+
   theme(axis.title.y = element_blank(),
-        axis.text.x = element_text(angle = 45),
-        legend.position = "none",
+        legend.position = "top",
         strip.background = element_blank(),
         strip.text.x = element_blank(),
         text=element_text(family="serif", size=8*(96/72)))

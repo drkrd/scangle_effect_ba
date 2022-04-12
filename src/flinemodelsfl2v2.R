@@ -10,7 +10,7 @@ library(parallel)
 library(foreach)
 library(doParallel)
 
-plots <- readLAScatalog("D:/1_Work/2_Ciron/Data/ULM/LAS/norm/plots/15m_rad/april2021/flightlines_2/")
+plots <- readLAScatalog("D:/1_Work/2_Ciron/Data/ULM/LAS/norm/plots/15m_rad/august2021/flightlines_2/")
 
 ####VERY IMPORTANT WHEN PROCESSING INDIVIDUAL PLOTS
 opt_independent_files(plots) <- TRUE 
@@ -43,27 +43,27 @@ func_computeall <- function(chunk)
 }
 plotmetsfl2 <- catalog_apply(plots, func_computeall)
 #############################################################################################################
-plotmetsfl2 <- rbindlist(plotmetsfl2)
-plotmetsfl2 <- plotmetsfl2[, c("fl1","fl2"):=tstrsplit(meanang,"_",fixed=T),]
-plotmetsfl2$fl1 <- as.numeric(plotmetsfl2$fl1)
-plotmetsfl2$fl2 <- as.numeric(plotmetsfl2$fl2)
-plotmetsfl2 <- plotmetsfl2[, fl2:= ifelse(is.na(fl2), fl1, fl2),]
+pmetsfl2 <- rbindlist(plotmetsfl2)
+pmetsfl2 <- pmetsfl2[, c("fl1","fl2"):=tstrsplit(meanang,"_",fixed=T),]
+pmetsfl2$fl1 <- as.numeric(pmetsfl2$fl1)
+pmetsfl2$fl2 <- as.numeric(pmetsfl2$fl2)
+pmetsfl2 <- pmetsfl2[, fl2:= ifelse(is.na(fl2), fl1, fl2),]
 
-plotmetsfl2 <- plotmetsfl2[, cl1:=ifelse(fl1>=0&fl1<10, "a",
+pmetsfl2 <- pmetsfl2[, cl1:=ifelse(fl1>=0&fl1<10, "a",
                                            ifelse(fl1>=10&fl1<20, "b",
                                                   ifelse(fl1>=20&fl1<30, "c",
                                                          ifelse(fl1>=30&fl1<40,"d","e"))))]
-plotmetsfl2 <- plotmetsfl2[, cl2:=ifelse(fl2>=0&fl2<10, "a",
+pmetsfl2 <- pmetsfl2[, cl2:=ifelse(fl2>=0&fl2<10, "a",
                                            ifelse(fl2>=10&fl2<20, "b",
                                                   ifelse(fl2>=20&fl2<30, "c",
                                                          ifelse(fl2>=30&fl2<40,"d","e"))))]
 
-plotmetsfl2 <- plotmetsfl2[cl1 != "e" & cl2 != "e" & cl1 != "d" & cl2 != "e",]
+pmetsfl2 <- pmetsfl2[cl1 != "e" & cl2 != "e" & cl1 != "d" & cl2 != "d",]
 
-plotmetsfl2 <- plotmetsfl2[!fl1 %in% c(37.24, 7.16, 4.60, 16.52) & !fl2 %in% c(37.24, 7.16, 4.60, 16.52)]
+pmetsfl2 <- pmetsfl2[!fl1 %in% c(37.24, 7.16, 4.60, 16.52) & !fl2 %in% c(37.24, 7.16, 4.60, 16.52)]
 
 
-plotmetsfl2 <- plotmetsfl2[, cl := paste0(sort(.SD), collapse = ""), .SDcols = c("cl1", "cl2"),  by = 1:nrow(plotmetsfl2)]
+pmetsfl2 <- pmetsfl2[, cl := paste0(sort(.SD), collapse = ""), .SDcols = c("cl1", "cl2"),  by = 1:nrow(pmetsfl2)]
 
 
 ##############################################################################################################################
@@ -78,7 +78,7 @@ alldtms <- sapply(allpcs, function(x){
   USE.NAMES = TRUE)
 names(alldtms) <- basename(file_path_sans_ext(names(alldtms)))
 
-allvoxfiles <- as.data.table(list.files(paste0("D:/1_Work/2_Ciron/voxelisation/Results/May/wo_interpolation/voxfiles/flightlines_2/"), 
+allvoxfiles <- as.data.table(list.files(paste0("D:/1_Work/2_Ciron/voxelisation/Results/October/wo_interpolation/voxels/flightlines_2/"), 
                                         pattern = "*.vox",
                                         full.names = TRUE))
 allvoxfiles[, id_placette := sub("\\@.*","",basename(file_path_sans_ext(V1)))]
@@ -95,7 +95,7 @@ allvoxfiles <- allvoxfiles[, cl2:=ifelse(fl2>=0&fl2<10, "a",
                                                 ifelse(fl2>=20&fl2<30, "c",
                                                        ifelse(fl2>=30&fl2<40,"d","e"))))]
 
-allvoxfiles <- allvoxfiles[cl1 != "e" & cl2 != "e" & cl1 != "d" & cl2 != "e",]
+allvoxfiles <- allvoxfiles[cl1 != "e" & cl2 != "e" & cl1 != "d" & cl2 != "d",]
 allvoxfiles <- allvoxfiles[!fl1 %in% c(37.24, 7.16, 4.60, 16.52) & !fl2 %in% c(37.24, 7.16, 4.60, 16.52)]
 
 
@@ -112,13 +112,13 @@ pfcvladvox <- voxall[, .(cvladvox=cv(PADmean, na.rm = TRUE),
 
 setkeyv(pfcvladvox, c("id_placette", "meanang"))
 pfcvladvox$id_placette <- sub("_.*","", pfcvladvox$id_placette)
-setkeyv(plotmetsfl2, c("id_placette", "meanang"))
-plotmetsfl2 <- plotmetsfl2[pfcvladvox]
+setkeyv(pmetsfl2, c("id_placette", "meanang"))
+pmetsfl2 <- pmetsfl2[pfcvladvox]
 #############################################################################################################################
-plotmetsfl2 <- unique(plotmetsfl2[, prob := prop.table(table(cl))[cl], id_placette][])
-plotmetsfl2 <- plotmetsfl2[, wt := (1/prob)/(1/sum(prob)), id_placette]
-plotmetsfl2 <- plotmetsfl2[, wt := wt/sum(wt), id_placette]
-plotmetsfl2$rid <- seq(1:nrow(plotmetsfl2)) 
+pmetsfl2 <- unique(pmetsfl2[, prob := prop.table(table(cl))[cl], id_placette][])
+pmetsfl2 <- pmetsfl2[, wt := (1/prob)/(1/sum(prob)), id_placette]
+pmetsfl2 <- pmetsfl2[, wt := wt/sum(wt), id_placette]
+pmetsfl2$rid <- seq(1:nrow(pmetsfl2)) 
 #############################################################################################################################
 
 plotmetsfl2ab=plotmetsfl2[plotmetsfl2[, .I[cl=="ab"  | all(cl!="ab")], by = id_placette]$V1]
@@ -154,13 +154,13 @@ plotmetsfl2bc <- plotmetsfl2bc[, wt := wt/sum(wt), id_placette]
 ####################################################################################################################
 
 #################################################################################################################################
-pmetsfl2.all <- plotmetsfl2
+pmetsfl2.all <- pmetsfl2
 
 #tabulate per plot the number of pcs belonging to each class
-tbl <- with(plotmetsfl2, table(id_placette, cl))
+tbl <- with(pmetsfl2.all, table(id_placette, cl))
 
 #pick all the plots that have atleast one pc belonging to class a, class b and class c each
-tbl2 <- tbl[which(tbl[,2]>0 & tbl[,3]>0 & tbl[,6]>0),]
+tbl2 <- tbl[which(tbl[,2]>0 & tbl[,3]>0 & tbl[,5]>0),]
 
 #subset those pcs and their metrics which satisfy the above condition
 pmets.withallcls <- pmetsfl2.all[id_placette %in% rownames(tbl2)]
@@ -540,12 +540,38 @@ ciron.mdlmets.fl2clbc <- melt(rbindlist(lapply(cironfl2.clbc, function(x)
   return(metdf)
 })), measure.vars = c("R2", "RMSE", "rRMSE", "MPE"))
 
+
+
+
 # 
 ciron.mdlmets.fl2all <- cbind(ciron.mdlmets.fl2all, "exp"=rep("fl2", nrow(ciron.mdlmets.fl2all)), "id"=rep(rep(1:5000, 1, each=6), 4))
 ciron.mdlmets.fl2clab <- cbind(ciron.mdlmets.fl2clab, "exp"=rep("AB", nrow(ciron.mdlmets.fl2clab)), "id"=rep(rep(1:5000, 1, each=6), 4))
 ciron.mdlmets.fl2clac <- cbind(ciron.mdlmets.fl2clac, "exp"=rep("AC", nrow(ciron.mdlmets.fl2clac)), "id"=rep(rep(1:5000, 1, each=6), 4))
 ciron.mdlmets.fl2clbc <- cbind(ciron.mdlmets.fl2clbc, "exp"=rep("BC", nrow(ciron.mdlmets.clc)), "id"=rep(rep(1:5000, 1, each=6), 4))
 
+
+cironfl2.mdlmets.ref <- melt(rbindlist(lapply(cironfl2.ref, function(x)
+{
+  m1.mdlmets <- func_mdlmets(x$m1.obs, x$m1.pred, "BA1", "old")
+  m2.mdlmets <- func_mdlmets(x$m2.obs, x$m2.pred, "BA2", "old")
+  m3.mdlmets <- func_mdlmets(x$m5.obs, x$m5.pred, "Vst1", "old")
+  m4.mdlmets <- func_mdlmets(x$m6.obs, x$m6.pred, "Vst2", "old")
+  m5.mdlmets <- func_mdlmets(x$m3.obs, x$m3.pred, "Vtot1", "old")
+  m6.mdlmets <- func_mdlmets(x$m4.obs, x$m4.pred, "Vtot2", "old")
+  
+  
+  y <- list(m1.mdlmets,
+            m2.mdlmets,
+            m3.mdlmets,
+            m4.mdlmets,
+            m5.mdlmets,
+            m6.mdlmets)
+  metdf <- rbindlist(y)
+  return(metdf)
+})), measure.vars = c("R2", "RMSE", "rRMSE", "MPE"))
+cironfl2.mdlmets.ref <- cbind(cironfl2.mdlmets.ref, "exp"=rep("all", nrow(cironfl2.mdlmets.ref)), "id"=rep(rep(1:5000, 1, each=6), 4))
+cironfl2.mdlmets.ref <- as.data.table(rbind(cironfl2.mdlmets.ref))
+cironfl2.mdlmets.ref$fls <- "Two flight lines"
 
 
 
@@ -574,7 +600,7 @@ ggplot(data=cironfl2.mdlmets[Forest_attr=="Stem volume"], aes(y=value, colour=Me
   theme_base()+
   scale_fill_grey()
 
-ggplot(data=ciron.mdlmetsfl2.ref[Forest_attr %in% c("m2", "m4")], aes(y=value, x=Forest_attr))+
+ggplot(data=cironfl2.mdlmets.ref, aes(y=value, x=Forest_attr))+
   geom_boxplot()+
   facet_grid(variable~., scales = "free")+
   theme_base()+

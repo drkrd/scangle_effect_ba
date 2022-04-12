@@ -1,6 +1,6 @@
 
 
-
+height=0
 plots <- readLAScatalog("D:/1_Work/5_Bauges/Data/ULM/LAS/norm/plots/15m_rad/may2021/flightlines_1/")
 opt_independent_files(plots) <- TRUE ####VERY IMPORTANT WHEN PROCESSING INDIVIDUAL PLOTS
 func_computeall <- function(chunk)
@@ -44,7 +44,7 @@ profiles.ref <- profiles.ref[!(id_placette=="283_74_ONF" & meanang==6.28)]
 
 
 
-allpcs <- list.files(paste0("D:/1_Work/5_Bauges/Data/ULM/LAS/unnorm/plots/15m_rad/may2021/flightlines_1//"),
+allpcs <- list.files(paste0("D:/1_Work/5_Bauges/Data/ULM/LAS/unnorm/plots/15m_rad/may2021/allpoints/"),
                     pattern = "*.las",
                     full.names = TRUE)
 
@@ -55,16 +55,30 @@ alldtms <- sapply(allpcs, function(x){
   USE.NAMES = TRUE)
 names(alldtms) <- basename(file_path_sans_ext(names(alldtms)))
 
-allvoxfiles <- as.data.table(list.files(paste0("D:/1_Work/5_Bauges/Voxelisation/Results/74/may2021/voxfiles/flightlines_1//"), 
+allvoxfiles <- as.data.table(list.files(paste0("D:/1_Work/5_Bauges/Voxelisation/Results/74/may2021/voxfiles/flightlines_1/"), 
                                         pattern = "*.vox",
                                         full.names = TRUE))
 allvoxfiles[, id_placette := sub("\\@.*","",basename(file_path_sans_ext(V1)))]
 allvoxfiles[, meanang := sub(".*\\@","",basename(file_path_sans_ext(V1)))]
+
+
+
+
+
 profiles.vox <- rbindlist(apply(allvoxfiles, 1, func_normvox2, 
                                 pth ="D:/1_Work/5_Bauges/Data/ULM/LAS/unnorm/plots/15m_rad/may2021/allpoints/", 
                                 ht=height))
+
+
+
+
+
+
 setDT(profiles.vox)
+
 profiles.vox$meanang <- as.numeric(profiles.vox$meanang)
+
+
 profiles.vox <- profiles.vox[,c("id_placette", "meanang", "PADmean", "k1")]
 colnames(profiles.vox) <- c("id_placette", "meanang", "PAD", "Height")
 profiles.vox$type <- rep("vox", nrow(profiles.vox))
@@ -108,8 +122,8 @@ func_profiles <- function(profs)
 
 
 profsfl1 <- NULL
-for(plac in unique(profiles.df$id_placette))
+for(plac in unique(profiles.vox$id_placette))
 {
-  profsfl1[[plac]] <- func_profiles(profiles.df[id_placette==plac])
+  profsfl1[[plac]] <- func_profiles(profiles.vox[id_placette==plac])
 }
 
